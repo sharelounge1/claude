@@ -522,3 +522,272 @@ experience-platform/
 **최종 업데이트**: 2025-01-15
 **작성자**: Claude
 **다음 작업**: 진행중 체험단 페이지 구현
+
+---
+
+## 📅 2025-01-15 - Phase 2: 네이버 지도 API 연동
+
+### 1. 환경 변수 설정
+
+#### 1.1. .env 파일 생성
+```bash
+# 네이버 지도 API
+VITE_NAVER_MAP_CLIENT_ID=44d6y4a4oe
+VITE_NAVER_MAP_CLIENT_SECRET=FT1VSYZ5KtjIJoWOlFeDOHR5QZJEzW59SS8622ET
+```
+
+**주의사항**:
+- `.env` 파일은 `.gitignore`에 추가하여 GitHub에 업로드되지 않도록 함
+- `.env.example` 파일을 만들어 다른 개발자들이 참고할 수 있도록 함
+
+#### 1.2. .gitignore 업데이트
+```gitignore
+# Environment variables
+.env
+.env.local
+.env.*.local
+```
+
+---
+
+### 2. 네이버 지도 SDK 추가
+
+#### 2.1. index.html 수정
+```html
+<!-- 네이버 지도 API -->
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=44d6y4a4oe"></script>
+```
+
+**변경사항**:
+- `lang` 속성을 `"ko"`로 변경
+- `title`을 "체험단 플랫폼"으로 변경
+- 네이버 지도 SDK 스크립트 추가
+
+---
+
+### 3. TypeScript 타입 정의
+
+#### 3.1. naver-maps.d.ts 생성
+- **파일**: `src/types/naver-maps.d.ts`
+- **역할**: 네이버 지도 API의 TypeScript 타입 정의
+
+**정의된 타입**:
+- `naver.maps.Map`: 지도 객체
+- `naver.maps.LatLng`: 위도/경도 객체
+- `naver.maps.Marker`: 마커 객체
+- `naver.maps.InfoWindow`: 정보 창 객체
+- `naver.maps.Event`: 이벤트 리스너
+
+**주요 인터페이스**:
+```typescript
+interface MapOptions {
+  center?: LatLng | LatLngLiteral;
+  zoom?: number;
+  zoomControl?: boolean;
+}
+
+interface MarkerOptions {
+  position: LatLng | LatLngLiteral;
+  map?: Map;
+  title?: string;
+  icon?: string | any;
+}
+```
+
+---
+
+### 4. HomePage 컴포넌트 리팩토링
+
+#### 4.1. 주요 변경사항
+
+**1. useRef 훅 추가**
+```typescript
+const mapRef = useRef<HTMLDivElement>(null);       // 지도 DOM 요소
+const naverMapRef = useRef<any>(null);             // 네이버 지도 객체
+const markersRef = useRef<any[]>([]);              // 마커 배열
+const infoWindowsRef = useRef<any[]>([]);          // 정보창 배열
+```
+
+**2. useEffect로 지도 초기화**
+```typescript
+useEffect(() => {
+  if (!mapRef.current || !window.naver) return;
+
+  // 지도 생성
+  const map = new window.naver.maps.Map(mapRef.current, {
+    center: new window.naver.maps.LatLng(37.5665, 126.9780),
+    zoom: 15,
+    zoomControl: true,
+  });
+
+  naverMapRef.current = map;
+  // ...
+}, []);
+```
+
+**3. 마커 생성**
+- 각 매장 데이터를 순회하며 마커 생성
+- 커스텀 아이콘 사용 (이모지 + 파란색 원형 배경)
+- 마커 클릭 시 InfoWindow 표시
+
+**4. 커스텀 마커 아이콘**
+```typescript
+icon: {
+  content: `
+    <div style="
+      width: 48px;
+      height: 48px;
+      background-color: #4A90E2;
+      border: 4px solid white;
+      border-radius: 50%;
+      ...
+    ">
+      ${getCategoryIcon(markerData.category)}
+    </div>
+  `,
+  size: new window.naver.maps.Size(48, 48),
+  anchor: new window.naver.maps.Point(24, 24),
+}
+```
+
+**5. InfoWindow (정보 창)**
+- 매장명, 모집 인원 표시
+- "상세보기" 버튼 포함
+- 마커 클릭 시 열림/닫힘 토글
+
+**6. 이벤트 리스너**
+```typescript
+window.naver.maps.Event.addListener(marker, 'click', () => {
+  // 다른 InfoWindow 닫기
+  infoWindowsRef.current.forEach((iw) => iw.close());
+
+  // 현재 InfoWindow 토글
+  if (infoWindow.getMap()) {
+    infoWindow.close();
+  } else {
+    infoWindow.open(map, marker);
+  }
+});
+```
+
+**7. 클린업**
+```typescript
+return () => {
+  markersRef.current.forEach((marker) => marker.setMap(null));
+  markersRef.current = [];
+  infoWindowsRef.current = [];
+};
+```
+
+---
+
+### 5. UI/UX 개선
+
+#### 5.1. 검색바 z-index 조정
+- `pointer-events-none` 추가로 지도 조작 방해 방지
+- 검색바와 필터 버튼에만 `pointer-events-auto` 적용
+
+#### 5.2. 마커 Hover 효과
+```html
+onmouseover="this.style.transform='scale(1.1)'"
+onmouseout="this.style.transform='scale(1)'"
+```
+
+---
+
+### 6. 구현 완료 항목
+
+- [x] 환경 변수 설정 (.env, .env.example)
+- [x] .gitignore 업데이트
+- [x] index.html에 네이버 지도 SDK 추가
+- [x] TypeScript 타입 정의 파일 생성
+- [x] HomePage 컴포넌트 리팩토링
+- [x] 실제 네이버 지도 렌더링
+- [x] 커스텀 마커 3개 표시
+- [x] 마커 클릭 시 InfoWindow 표시
+- [x] 줌 컨트롤 추가
+
+---
+
+### 7. 테스트 방법
+
+```bash
+# 개발 서버 실행
+npm run dev
+
+# 브라우저에서 확인
+http://localhost:5173/
+```
+
+**확인 사항**:
+1. ✅ 서울 시청 근처를 중심으로 지도 표시
+2. ✅ 3개 매장 마커 표시 (카페☕, 고깃집🥩, 이자카야🍶)
+3. ✅ 마커 hover 시 크기 확대
+4. ✅ 마커 클릭 시 정보창 표시
+5. ✅ 정보창에 매장명, 모집 인원, 상세보기 버튼 표시
+6. ✅ 우측 상단에 줌 컨트롤 표시
+7. ✅ 지도 드래그, 줌 인/아웃 가능
+
+---
+
+### 8. Mock 데이터
+
+```typescript
+const markers: MarkerData[] = [
+  { 
+    id: 1, 
+    name: '카페 모카', 
+    lat: 37.5665, 
+    lng: 126.9780, 
+    category: 'cafe', 
+    quota: '3/5' 
+  },
+  { 
+    id: 2, 
+    name: '서울 고깃집', 
+    lat: 37.5635, 
+    lng: 126.9785, 
+    category: 'meat', 
+    quota: '2/3' 
+  },
+  { 
+    id: 3, 
+    name: '일본 이자카야', 
+    lat: 37.5675, 
+    lng: 126.9795, 
+    category: 'izakaya', 
+    quota: '5/5' 
+  },
+];
+```
+
+---
+
+### 9. 향후 개선 사항
+
+1. **검색 기능 구현**
+   - 검색어 입력 시 매장 필터링
+   - 검색 결과 지도 중심 이동
+
+2. **필터 기능 구현**
+   - SNS, 매장 종류 필터 적용 시 마커 필터링
+
+3. **매장 상세 페이지 연동**
+   - InfoWindow "상세보기" 버튼 클릭 시 상세 페이지 이동
+
+4. **현재 위치 표시**
+   - Geolocation API로 사용자 위치 가져오기
+   - 현재 위치 마커 표시
+
+5. **마커 클러스터링**
+   - 매장 수가 많아질 경우 클러스터링 적용
+
+6. **백엔드 연동**
+   - Supabase에서 실제 매장 데이터 가져오기
+   - 실시간 모집 인원 업데이트
+
+---
+
+**최종 업데이트**: 2025-01-15
+**작성자**: Claude
+**다음 작업**: 체험단 상세 페이지 구현
