@@ -12,9 +12,10 @@ interface MarkerData {
 
 const HomePage = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const naverMapRef = useRef<any>(null);
+  const kakaoMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowsRef = useRef<any[]>([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -41,55 +42,90 @@ const HomePage = () => {
     }
   };
 
-  // 네이버 지도 초기화
+  // 카카오 지도 SDK 동적 로드
   useEffect(() => {
-    if (!mapRef.current || !window.naver) return;
+    const KAKAO_APP_KEY = import.meta.env.VITE_KAKAO_MAP_APP_KEY || 'YOUR_KAKAO_APP_KEY';
 
-    // 지도 생성
-    const mapOptions = {
-      center: new window.naver.maps.LatLng(37.5665, 126.9780),
-      zoom: 15,
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.naver.maps.Position.TOP_RIGHT,
-      },
+    // 이미 로드되었는지 확인
+    if (window.kakao && window.kakao.maps) {
+      setMapLoaded(true);
+      return;
+    }
+
+    // 카카오 지도 SDK 스크립트 동적 로드
+    const script = document.createElement('script');
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
+    script.async = true;
+
+    script.onload = () => {
+      // SDK 로드 완료 후 지도 API 로드
+      window.kakao.maps.load(() => {
+        setMapLoaded(true);
+      });
     };
 
-    const map = new window.naver.maps.Map(mapRef.current, mapOptions);
-    naverMapRef.current = map;
+    script.onerror = () => {
+      console.error('카카오 지도 SDK 로드 실패');
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      // 클린업: 스크립트 제거
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, []);
+
+  // 카카오 지도 초기화
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded || !window.kakao) return;
+
+    // 지도 생성
+    const mapOption = {
+      center: new window.kakao.maps.LatLng(37.5665, 126.9780),
+      level: 3, // 확대 레벨 (1-14, 숫자가 작을수록 확대)
+    };
+
+    const map = new window.kakao.maps.Map(mapRef.current, mapOption);
+    kakaoMapRef.current = map;
 
     // 마커 생성
     markers.forEach((markerData) => {
-      const marker = new window.naver.maps.Marker({
-        position: new window.naver.maps.LatLng(markerData.lat, markerData.lng),
-        map: map,
-        title: markerData.name,
-        icon: {
-          content: `
-            <div style="
-              width: 48px;
-              height: 48px;
-              background-color: #4A90E2;
-              border: 4px solid white;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 20px;
-              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              cursor: pointer;
-              transition: transform 0.2s;
-            " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-              ${getCategoryIcon(markerData.category)}
-            </div>
-          `,
-          size: new window.naver.maps.Size(48, 48),
-          anchor: new window.naver.maps.Point(24, 24),
-        },
+      const markerPosition = new window.kakao.maps.LatLng(markerData.lat, markerData.lng);
+
+      // 커스텀 오버레이로 마커 생성 (이모지 아이콘)
+      const customOverlay = new window.kakao.maps.CustomOverlay({
+        position: markerPosition,
+        content: `
+          <div style="
+            width: 48px;
+            height: 48px;
+            background-color: #4A90E2;
+            border: 4px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+          "
+          onmouseover="this.style.transform='scale(1.1)'"
+          onmouseout="this.style.transform='scale(1)'"
+          id="marker-${markerData.id}">
+            ${getCategoryIcon(markerData.category)}
+          </div>
+        `,
+        yAnchor: 0.5,
       });
 
+      customOverlay.setMap(map);
+
       // InfoWindow 생성
-      const infoWindow = new window.naver.maps.InfoWindow({
+      const infoWindow = new window.kakao.maps.InfoWindow({
         content: `
           <div style="
             padding: 12px;
@@ -124,26 +160,25 @@ const HomePage = () => {
             </button>
           </div>
         `,
-        borderWidth: 0,
-        backgroundColor: 'transparent',
-        anchorSize: new window.naver.maps.Size(0, 0),
+        removable: true,
       });
 
-      // 마커 클릭 이벤트
-      window.naver.maps.Event.addListener(marker, 'click', () => {
-        // 다른 InfoWindow 닫기
-        infoWindowsRef.current.forEach((iw) => iw.close());
+      // 마커 클릭 이벤트 (DOM 이벤트 리스너 사용)
+      setTimeout(() => {
+        const markerElement = document.getElementById(`marker-${markerData.id}`);
+        if (markerElement) {
+          markerElement.addEventListener('click', () => {
+            // 다른 InfoWindow 닫기
+            infoWindowsRef.current.forEach((iw) => iw.close());
 
-        // 현재 InfoWindow 열기
-        if (infoWindow.getMap()) {
-          infoWindow.close();
-        } else {
-          infoWindow.open(map, marker);
+            // 현재 InfoWindow 열기
+            infoWindow.open(map, { lat: markerData.lat, lng: markerData.lng } as any);
+          });
         }
-      });
+      }, 100);
 
       // 마커와 InfoWindow 저장
-      markersRef.current.push(marker);
+      markersRef.current.push(customOverlay);
       infoWindowsRef.current.push(infoWindow);
     });
 
@@ -153,7 +188,7 @@ const HomePage = () => {
       markersRef.current = [];
       infoWindowsRef.current = [];
     };
-  }, []);
+  }, [mapLoaded]);
 
   const handleRemoveFilter = (filter: string) => {
     setActiveFilters(activeFilters.filter((f) => f !== filter));
@@ -212,8 +247,14 @@ const HomePage = () => {
         )}
       </div>
 
-      {/* Naver Map Container */}
-      <div ref={mapRef} className="w-full h-full" />
+      {/* Kakao Map Container */}
+      <div ref={mapRef} className="w-full h-full">
+        {!mapLoaded && (
+          <div className="flex items-center justify-center h-full bg-gray-100">
+            <p className="text-gray-500">지도를 불러오는 중...</p>
+          </div>
+        )}
+      </div>
 
       {/* Filter Modal */}
       {isFilterOpen && (

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>네이버 지도 API 테스트</title>
+    <title>카카오 지도 API 테스트</title>
     <style>
         body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
         #map { width: 100%; height: 600px; border: 2px solid #333; }
@@ -14,7 +14,7 @@
     </style>
 </head>
 <body>
-    <h1>🗺️ 네이버 지도 API 연동 테스트</h1>
+    <h1>🗺️ 카카오 지도 API 연동 테스트</h1>
 
     <div id="status" class="status info">
         <strong>상태:</strong> 지도 로딩 중...
@@ -24,13 +24,13 @@
 
     <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
         <h3>📋 API 정보</h3>
-        <p><strong>Client ID:</strong> 44d6y4a4oe</p>
-        <p><strong>SDK URL:</strong> https://openapi.map.naver.com/openapi/v3/maps.js</p>
+        <p><strong>App Key:</strong> YOUR_KAKAO_APP_KEY (환경변수에서 설정)</p>
+        <p><strong>SDK URL:</strong> https://dapi.kakao.com/v2/maps/sdk.js</p>
         <p><strong>현재 URL:</strong> <span id="currentUrl"></span></p>
     </div>
 
-    <!-- 네이버 지도 API -->
-    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=44d6y4a4oe"></script>
+    <!-- 카카오 지도 API -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_APP_KEY"></script>
 
     <script>
         // 현재 URL 표시
@@ -41,43 +41,51 @@
             const statusDiv = document.getElementById('status');
 
             try {
-                // naver 객체 확인
-                if (typeof naver === 'undefined') {
+                // kakao 객체 확인
+                if (typeof kakao === 'undefined') {
                     statusDiv.className = 'status error';
                     statusDiv.innerHTML = `
-                        <strong>❌ 실패:</strong> naver 객체를 찾을 수 없습니다.<br>
-                        <small>네이버 Maps SDK가 로드되지 않았습니다.</small>
+                        <strong>❌ 실패:</strong> kakao 객체를 찾을 수 없습니다.<br>
+                        <small>카카오 Maps SDK가 로드되지 않았습니다.</small>
                     `;
                     return;
                 }
 
-                if (typeof naver.maps === 'undefined') {
+                if (typeof kakao.maps === 'undefined') {
                     statusDiv.className = 'status error';
                     statusDiv.innerHTML = `
-                        <strong>❌ 실패:</strong> naver.maps 객체를 찾을 수 없습니다.<br>
+                        <strong>❌ 실패:</strong> kakao.maps 객체를 찾을 수 없습니다.<br>
                         <small>Maps API가 제대로 로드되지 않았습니다.</small>
                     `;
                     return;
                 }
 
-                // 지도 생성
-                const mapOptions = {
-                    center: new naver.maps.LatLng(37.5665, 126.9780),
-                    zoom: 15
+                // 지도를 표시할 div
+                const mapContainer = document.getElementById('map');
+
+                // 지도 옵션
+                const mapOption = {
+                    center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청 좌표
+                    level: 3 // 지도 확대 레벨
                 };
 
-                const map = new naver.maps.Map('map', mapOptions);
+                // 지도 생성
+                const map = new kakao.maps.Map(mapContainer, mapOption);
+
+                // 마커 위치
+                const markerPosition = new kakao.maps.LatLng(37.5665, 126.9780);
 
                 // 마커 생성
-                const marker = new naver.maps.Marker({
-                    position: new naver.maps.LatLng(37.5665, 126.9780),
-                    map: map,
-                    title: '서울시청'
+                const marker = new kakao.maps.Marker({
+                    position: markerPosition
                 });
+
+                // 마커를 지도에 표시
+                marker.setMap(map);
 
                 statusDiv.className = 'status success';
                 statusDiv.innerHTML = `
-                    <strong>✅ 성공!</strong> 네이버 지도 API가 정상적으로 작동합니다.<br>
+                    <strong>✅ 성공!</strong> 카카오 지도 API가 정상적으로 작동합니다.<br>
                     <small>지도가 표시되고 마커가 생성되었습니다.</small>
                 `;
 
@@ -92,32 +100,35 @@
         }
 
         // SDK 로드 대기
-        if (window.naver && window.naver.maps) {
+        if (window.kakao && window.kakao.maps) {
             // 이미 로드됨
-            initMap();
+            kakao.maps.load(() => {
+                initMap();
+            });
         } else {
             // 로드 완료 대기
             const checkInterval = setInterval(() => {
-                if (window.naver && window.naver.maps) {
+                if (window.kakao && window.kakao.maps) {
                     clearInterval(checkInterval);
-                    initMap();
+                    kakao.maps.load(() => {
+                        initMap();
+                    });
                 }
             }, 100);
 
             // 10초 후에도 로드 안되면 타임아웃
             setTimeout(() => {
                 clearInterval(checkInterval);
-                if (!window.naver || !window.naver.maps) {
+                if (!window.kakao || !window.kakao.maps) {
                     const statusDiv = document.getElementById('status');
                     statusDiv.className = 'status error';
                     statusDiv.innerHTML = `
-                        <strong>❌ 타임아웃:</strong> 네이버 Maps SDK가 10초 안에 로드되지 않았습니다.<br>
+                        <strong>❌ 타임아웃:</strong> 카카오 Maps SDK가 10초 안에 로드되지 않았습니다.<br>
                         <small>가능한 원인:</small>
                         <ul style="margin: 10px 0; padding-left: 20px;">
-                            <li>Client ID가 잘못됨</li>
-                            <li>Service URL이 등록되지 않음</li>
+                            <li>App Key가 잘못됨</li>
+                            <li>플랫폼 도메인이 등록되지 않음</li>
                             <li>네트워크 오류</li>
-                            <li>API 할당량 초과</li>
                         </ul>
                     `;
                 }
@@ -125,10 +136,10 @@
         }
 
         // 콘솔에 디버그 정보 출력
-        console.log('=== 네이버 지도 API 디버그 정보 ===');
+        console.log('=== 카카오 지도 API 디버그 정보 ===');
         console.log('현재 URL:', window.location.href);
-        console.log('naver 객체:', window.naver);
-        console.log('naver.maps 객체:', window.naver ? window.naver.maps : 'undefined');
+        console.log('kakao 객체:', window.kakao);
+        console.log('kakao.maps 객체:', window.kakao ? window.kakao.maps : 'undefined');
     </script>
 </body>
 </html>
