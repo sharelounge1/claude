@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 지도 API 테스트</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 600px; border: 2px solid #333; }
+        .status { padding: 10px; margin-bottom: 20px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ 네이버 지도 API 연동 테스트</h1>
+
+    <div id="status" class="status info">
+        <strong>상태:</strong> 지도 로딩 중...
+    </div>
+
+    <div id="map"></div>
+
+    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+        <h3>📋 API 정보</h3>
+        <p><strong>Client ID:</strong> 44d6y4a4oe</p>
+        <p><strong>SDK URL:</strong> https://oapi.map.naver.com/openapi/v3/maps.js</p>
+        <p><strong>현재 URL:</strong> <span id="currentUrl"></span></p>
+    </div>
+
+    <!-- 네이버 지도 API -->
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=44d6y4a4oe"></script>
+
+    <script>
+        // 현재 URL 표시
+        document.getElementById('currentUrl').textContent = window.location.href;
+
+        // 지도 초기화 시도
+        function initMap() {
+            const statusDiv = document.getElementById('status');
+
+            try {
+                // naver 객체 확인
+                if (typeof naver === 'undefined') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>❌ 실패:</strong> naver 객체를 찾을 수 없습니다.<br>
+                        <small>네이버 Maps SDK가 로드되지 않았습니다.</small>
+                    `;
+                    return;
+                }
+
+                if (typeof naver.maps === 'undefined') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>❌ 실패:</strong> naver.maps 객체를 찾을 수 없습니다.<br>
+                        <small>Maps API가 제대로 로드되지 않았습니다.</small>
+                    `;
+                    return;
+                }
+
+                // 지도 생성
+                const mapOptions = {
+                    center: new naver.maps.LatLng(37.5665, 126.9780),
+                    zoom: 15
+                };
+
+                const map = new naver.maps.Map('map', mapOptions);
+
+                // 마커 생성
+                const marker = new naver.maps.Marker({
+                    position: new naver.maps.LatLng(37.5665, 126.9780),
+                    map: map,
+                    title: '서울시청'
+                });
+
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    <strong>✅ 성공!</strong> 네이버 지도 API가 정상적으로 작동합니다.<br>
+                    <small>지도가 표시되고 마커가 생성되었습니다.</small>
+                `;
+
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `
+                    <strong>❌ 오류 발생:</strong> ${error.message}<br>
+                    <small>콘솔(F12)에서 자세한 오류를 확인하세요.</small>
+                `;
+                console.error('지도 초기화 오류:', error);
+            }
+        }
+
+        // SDK 로드 대기
+        if (window.naver && window.naver.maps) {
+            // 이미 로드됨
+            initMap();
+        } else {
+            // 로드 완료 대기
+            const checkInterval = setInterval(() => {
+                if (window.naver && window.naver.maps) {
+                    clearInterval(checkInterval);
+                    initMap();
+                }
+            }, 100);
+
+            // 10초 후에도 로드 안되면 타임아웃
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (!window.naver || !window.naver.maps) {
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>❌ 타임아웃:</strong> 네이버 Maps SDK가 10초 안에 로드되지 않았습니다.<br>
+                        <small>가능한 원인:</small>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Client ID가 잘못됨</li>
+                            <li>Service URL이 등록되지 않음</li>
+                            <li>네트워크 오류</li>
+                            <li>API 할당량 초과</li>
+                        </ul>
+                    `;
+                }
+            }, 10000);
+        }
+
+        // 콘솔에 디버그 정보 출력
+        console.log('=== 네이버 지도 API 디버그 정보 ===');
+        console.log('현재 URL:', window.location.href);
+        console.log('naver 객체:', window.naver);
+        console.log('naver.maps 객체:', window.naver ? window.naver.maps : 'undefined');
+    </script>
+</body>
+</html>
