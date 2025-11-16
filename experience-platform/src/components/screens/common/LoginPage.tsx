@@ -1,17 +1,42 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { signIn, profile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Add authentication logic
-    // For now, redirect to home
-    navigate('/');
+    setError('');
+    setLoading(true);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      setError(error.message || '로그인에 실패했습니다.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+
+    // 프로필 타입에 따라 리다이렉트
+    // Note: profile은 signIn 후 AuthContext에서 자동으로 로드됨
+    setTimeout(() => {
+      if (profile?.user_type === 'admin') {
+        navigate('/admin');
+      } else if (profile?.user_type === 'owner') {
+        navigate('/owner');
+      } else {
+        navigate('/');
+      }
+    }, 100);
   };
 
   return (
@@ -26,6 +51,14 @@ const LoginPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">로그인</h1>
             <p className="text-gray-500 mt-2">체험단 플랫폼에 오신 것을 환영합니다</p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3">
+              <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
@@ -65,9 +98,10 @@ const LoginPage = () => {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              disabled={loading}
+              className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              로그인
+              {loading ? '로그인 중...' : '로그인'}
             </button>
           </form>
 

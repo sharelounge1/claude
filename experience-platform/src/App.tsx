@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
 import OwnerWebLayout from './components/layout/OwnerWebLayout';
 import OwnerAppLayout from './components/layout/OwnerAppLayout';
@@ -51,8 +52,9 @@ import AdminSettingsPage from './components/screens/admin/AdminSettingsPage';
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <AuthProvider>
+      <Router>
+        <Routes>
         {/* Common Routes - No Layout */}
         <Route path="/splash" element={<SplashScreen />} />
         <Route path="/login" element={<LoginPage />} />
@@ -108,8 +110,9 @@ function App() {
 
         {/* Fallback - Redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
