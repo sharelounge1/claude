@@ -193,27 +193,27 @@ const HomePageV3 = () => {
       <div className="absolute top-0 left-0 right-0 z-10 p-5 pointer-events-none">
         <div className="flex gap-3 pointer-events-auto animate-slideDown">
           <div className="flex-1 relative">
-            <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-pink-300" size={24} />
+            <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-700" size={24} />
             <input
               type="text"
               placeholder="매장명, 지역명 검색"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-white/30 bg-white/20 backdrop-blur-lg focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 shadow-2xl text-white placeholder-white/70 text-base font-medium"
+              className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-white/30 bg-white/90 backdrop-blur-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 shadow-2xl text-black placeholder-gray-500 text-base font-medium"
               style={{
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 0 60px rgba(255, 255, 255, 0.1)'
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2)'
               }}
             />
           </div>
 
           <button
             onClick={() => setIsFilterOpen(true)}
-            className="p-4 rounded-2xl bg-white/20 backdrop-blur-lg border-2 border-white/30 hover:bg-white/30 transition-all shadow-2xl"
+            className="p-4 rounded-2xl bg-white/90 backdrop-blur-lg border-2 border-white/30 hover:bg-white transition-all shadow-2xl"
             style={{
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2)'
             }}
           >
-            <SlidersHorizontal size={26} className="text-white" />
+            <SlidersHorizontal size={26} className="text-black" />
           </button>
         </div>
 
@@ -222,12 +222,12 @@ const HomePageV3 = () => {
             {activeFilters.map((filter) => (
               <div
                 key={filter}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/25 backdrop-blur-md text-white rounded-full text-sm font-bold border-2 border-white/40 shadow-lg"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/90 backdrop-blur-md text-black rounded-full text-sm font-bold border-2 border-white/40 shadow-lg"
               >
                 <span>{filter}</span>
                 <button
                   onClick={() => handleRemoveFilter(filter)}
-                  className="hover:bg-white/20 rounded-full p-1 transition-colors text-lg font-bold"
+                  className="hover:bg-gray-100 rounded-full p-1 transition-colors text-lg font-bold"
                 >
                   ×
                 </button>
@@ -235,7 +235,7 @@ const HomePageV3 = () => {
             ))}
             <button
               onClick={() => setActiveFilters([])}
-              className="px-5 py-2.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm hover:bg-white/30 transition-all font-bold border-2 border-white/30 shadow-lg"
+              className="px-5 py-2.5 bg-white/90 backdrop-blur-md text-black rounded-full text-sm hover:bg-white transition-all font-bold border-2 border-white/30 shadow-lg"
             >
               전체 해제
             </button>
@@ -255,28 +255,28 @@ const HomePageV3 = () => {
         )}
       </div>
 
-      {/* Glassmorphism Filter Modal */}
+      {/* Filter Modal */}
       {isFilterOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-fadeIn" onClick={() => setIsFilterOpen(false)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white/15 backdrop-blur-2xl rounded-t-3xl p-8 max-h-[80vh] overflow-y-auto border-t-2 border-white/30 animate-slideUp"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-8 max-h-[80vh] overflow-y-auto animate-slideUp"
             onClick={(e) => e.stopPropagation()}
             style={{
-              boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.2)'
+              boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.2)'
             }}
           >
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-white" style={{ textShadow: '0 0 20px rgba(236, 72, 153, 0.6)' }}>필터</h2>
+              <h2 className="text-2xl font-bold text-black">필터</h2>
               <button
                 onClick={() => setIsFilterOpen(false)}
-                className="text-white hover:text-pink-200 text-3xl font-bold"
+                className="text-black hover:text-gray-600 text-3xl font-bold"
               >
                 ×
               </button>
             </div>
 
             <div className="mb-8">
-              <h3 className="font-bold text-white mb-4 text-lg">SNS 선택</h3>
+              <h3 className="font-bold text-black mb-4 text-lg">SNS 선택</h3>
               <div className="flex flex-wrap gap-3">
                 {['블로그', '인스타그램', '유튜브'].map((sns) => (
                   <button
@@ -290,8 +290,8 @@ const HomePageV3 = () => {
                     }}
                     className={`px-6 py-3 rounded-full border-2 transition-all font-bold ${
                       activeFilters.includes(sns)
-                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-white/50 shadow-lg shadow-pink-500/50'
-                        : 'bg-white/15 backdrop-blur-md text-white border-white/30 hover:border-white/50 hover:bg-white/25'
+                        ? 'bg-black text-white border-black shadow-lg'
+                        : 'bg-white text-black border-gray-300 hover:border-black hover:bg-gray-50'
                     }`}
                   >
                     {sns}
@@ -301,7 +301,7 @@ const HomePageV3 = () => {
             </div>
 
             <div className="mb-8">
-              <h3 className="font-bold text-white mb-4 text-lg">매장 종류</h3>
+              <h3 className="font-bold text-black mb-4 text-lg">매장 종류</h3>
               <div className="flex flex-wrap gap-3">
                 {['카페', '밥집', '고깃집', '술집', '이자카야', '분식', '베이커리', '디저트', '한식당', '중식당', '일식당', '양식당'].map((category) => (
                   <button
@@ -315,8 +315,8 @@ const HomePageV3 = () => {
                     }}
                     className={`px-6 py-3 rounded-full border-2 transition-all font-bold ${
                       activeFilters.includes(category)
-                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-white/50 shadow-lg shadow-pink-500/50'
-                        : 'bg-white/15 backdrop-blur-md text-white border-white/30 hover:border-white/50 hover:bg-white/25'
+                        ? 'bg-black text-white border-black shadow-lg'
+                        : 'bg-white text-black border-gray-300 hover:border-black hover:bg-gray-50'
                     }`}
                   >
                     {category}
@@ -327,10 +327,7 @@ const HomePageV3 = () => {
 
             <button
               onClick={() => setIsFilterOpen(false)}
-              className="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 text-white py-5 rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-pink-500/50 transition-all"
-              style={{
-                boxShadow: '0 8px 32px rgba(236, 72, 153, 0.4), 0 0 60px rgba(236, 72, 153, 0.2)'
-              }}
+              className="w-full bg-black text-white py-5 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-all shadow-lg"
             >
               적용하기
             </button>
