@@ -165,10 +165,20 @@ const CampaignDetailPage = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-24">
         {/* Campaign Image */}
-        <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl h-64 mb-6 flex items-center justify-center">
-          <span className="text-8xl">📍</span>
+        <div
+          className="rounded-2xl h-80 mb-6 bg-cover bg-center relative overflow-hidden"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop)`,
+          }}
+        >
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-xl">
+              <h3 className="text-xl font-bold text-gray-900">{campaign.store?.name || '매장명 없음'}</h3>
+              <p className="text-sm text-gray-600 mt-1">{campaign.name}</p>
+            </div>
+          </div>
         </div>
 
         {/* Campaign Info */}

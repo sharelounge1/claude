@@ -22,6 +22,36 @@ const CampaignsListPage = () => {
   const [campaigns, setCampaigns] = useState<CampaignWithStore[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 카테고리별 이미지 URL
+  const getCategoryImage = (category?: string) => {
+    if (!category) return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop';
+
+    const lowerCategory = category.toLowerCase();
+    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe'))
+      return 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat'))
+      return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya'))
+      return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('술집') || lowerCategory.includes('bar'))
+      return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당'))
+      return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵'))
+      return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('디저트'))
+      return 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('한식'))
+      return 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('중식'))
+      return 'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('일식'))
+      return 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=600&h=400&fit=crop';
+    if (lowerCategory.includes('양식'))
+      return 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop';
+    return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop';
+  };
+
   useEffect(() => {
     fetchCampaigns();
   }, []);
@@ -230,23 +260,25 @@ const CampaignsListPage = () => {
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 {/* Image */}
-                <div className="relative h-48 bg-gradient-to-br from-blue-100 to-purple-100">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Store size={64} className="text-white/50" />
-                  </div>
+                <div
+                  className="relative h-52 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.3)), url(${getCategoryImage(campaign.store?.category)})`,
+                  }}
+                >
                   {/* SNS Badges */}
                   <div className="absolute top-3 left-3 flex gap-2">
                     {campaign.required_sns.map((sns) => (
                       <span
                         key={sns}
-                        className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700"
+                        className="px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-800 shadow-sm"
                       >
                         {sns}
                       </span>
                     ))}
                   </div>
                   {/* Quota Badge */}
-                  <div className="absolute top-3 right-3 px-3 py-1.5 bg-primary text-white rounded-full text-sm font-semibold">
+                  <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/80 backdrop-blur-sm text-white rounded-full text-sm font-semibold shadow-lg">
                     {campaign.current_participants}/{campaign.total_quota}명
                   </div>
                 </div>

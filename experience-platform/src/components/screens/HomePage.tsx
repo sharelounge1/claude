@@ -80,23 +80,34 @@ const HomePage = () => {
     }
   }
 
-  // 카테고리별 아이콘
-  const getCategoryIcon = (category?: string) => {
-    if (!category) return '📍';
+  // 카테고리별 색상 및 초성
+  const getCategoryStyle = (category?: string) => {
+    if (!category) return { color: '#EC4899', initial: 'E' };
 
     const lowerCategory = category.toLowerCase();
-    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe')) return '☕';
-    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat')) return '🥩';
-    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya')) return '🍶';
-    if (lowerCategory.includes('술집') || lowerCategory.includes('bar')) return '🍺';
-    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당')) return '🍚';
-    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵')) return '🥐';
-    if (lowerCategory.includes('디저트')) return '🍰';
-    if (lowerCategory.includes('한식')) return '🍲';
-    if (lowerCategory.includes('중식')) return '🥟';
-    if (lowerCategory.includes('일식')) return '🍱';
-    if (lowerCategory.includes('양식')) return '🍝';
-    return '📍';
+    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe'))
+      return { color: '#8B4513', initial: 'C' };
+    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat'))
+      return { color: '#DC2626', initial: 'M' };
+    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya'))
+      return { color: '#F59E0B', initial: 'I' };
+    if (lowerCategory.includes('술집') || lowerCategory.includes('bar'))
+      return { color: '#3B82F6', initial: 'B' };
+    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당'))
+      return { color: '#10B981', initial: 'R' };
+    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵'))
+      return { color: '#F97316', initial: 'P' };
+    if (lowerCategory.includes('디저트'))
+      return { color: '#EC4899', initial: 'D' };
+    if (lowerCategory.includes('한식'))
+      return { color: '#EF4444', initial: 'K' };
+    if (lowerCategory.includes('중식'))
+      return { color: '#F59E0B', initial: 'C' };
+    if (lowerCategory.includes('일식'))
+      return { color: '#14B8A6', initial: 'J' };
+    if (lowerCategory.includes('양식'))
+      return { color: '#8B5CF6', initial: 'W' };
+    return { color: '#EC4899', initial: 'E' };
   };
 
   // 카카오 지도 SDK 동적 로드
@@ -185,29 +196,32 @@ const HomePage = () => {
         campaign.store.longitude
       );
 
+      const categoryStyle = getCategoryStyle(campaign.store.category);
+
       const customOverlay = new window.kakao.maps.CustomOverlay({
         position: markerPosition,
         content: `
           <div style="
-            width: 60px;
-            height: 60px;
-            background: rgba(236, 72, 153, 0.9);
-            border: 3px solid rgba(255, 255, 255, 0.6);
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, ${categoryStyle.color} 0%, ${categoryStyle.color}dd 100%);
+            border: 3px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            box-shadow: 0 8px 32px rgba(236, 72, 153, 0.6), 0 0 40px rgba(236, 72, 153, 0.4);
-            backdrop-filter: blur(10px);
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(255, 255, 255, 0.3);
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           "
-          onmouseover="this.style.transform='scale(1.2) rotate(10deg)'; this.style.boxShadow='0 12px 40px rgba(236, 72, 153, 0.8), 0 0 60px rgba(236, 72, 153, 0.6)'"
-          onmouseout="this.style.transform='scale(1) rotate(0deg)'; this.style.boxShadow='0 8px 32px rgba(236, 72, 153, 0.6), 0 0 40px rgba(236, 72, 153, 0.4)'"
+          onmouseover="this.style.transform='scale(1.15)'; this.style.boxShadow='0 8px 30px rgba(0, 0, 0, 0.35), 0 0 0 5px rgba(255, 255, 255, 0.5)'"
+          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(255, 255, 255, 0.3)'"
           id="marker-${campaign.id}">
-            ${getCategoryIcon(campaign.store.category)}
+            ${categoryStyle.initial}
           </div>
         `,
         yAnchor: 0.5,
@@ -249,7 +263,7 @@ const HomePage = () => {
               font-weight: 600;
             ">모집: ${quota}명 ${isFull ? '(마감)' : ''}</p>
             <button
-              onclick="window.navigateToCampaign('${campaign.id}')"
+              id="detail-btn-${campaign.id}"
               style="
               width: 100%;
               background: linear-gradient(135deg, #EC4899 0%, #F97316 100%);
@@ -276,6 +290,16 @@ const HomePage = () => {
           markerElement.addEventListener('click', () => {
             infoWindowsRef.current.forEach((iw) => iw.close());
             infoWindow.open(map, { lat: campaign.store!.latitude, lng: campaign.store!.longitude } as any);
+
+            // InfoWindow가 열린 후 버튼에 이벤트 리스너 추가
+            setTimeout(() => {
+              const detailButton = document.getElementById(`detail-btn-${campaign.id}`);
+              if (detailButton) {
+                detailButton.addEventListener('click', () => {
+                  navigate(`/campaigns/${campaign.id}`);
+                });
+              }
+            }, 100);
           });
         }
       }, 100);
@@ -296,7 +320,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="relative h-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
+    <div className="relative h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
       {/* Glassmorphism Search Bar */}
       <div className="absolute top-0 left-0 right-0 z-10 p-5 pointer-events-none">
         <div className="flex gap-3 pointer-events-auto animate-slideDown">
