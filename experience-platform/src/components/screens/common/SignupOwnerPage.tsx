@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Store, FileText, Phone } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const SignupOwnerPage = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,10 +15,42 @@ const SignupOwnerPage = () => {
     businessNumber: '',
     phone: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Add registration logic
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('비밀번호는 최소 6자 이상이어야 합니다.');
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await signUp(formData.email, formData.password, {
+      name: formData.name,
+      user_type: 'owner',
+      business_name: formData.businessName,
+      business_number: formData.businessNumber,
+      phone: formData.phone,
+    });
+
+    if (error) {
+      setError(error.message || '회원가입에 실패했습니다.');
+      setLoading(false);
+      return;
+    }
+
+    // Success - navigate to login
+    alert('회원가입이 완료되었습니다! 로그인해주세요.');
     navigate('/login');
   };
 
@@ -29,6 +63,13 @@ const SignupOwnerPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">점주 회원가입</h1>
             <p className="text-gray-500 mt-2">사업자 정보를 입력해주세요</p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
+              {error}
+            </div>
+          )}
 
           {/* Signup Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -155,9 +196,10 @@ const SignupOwnerPage = () => {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              disabled={loading}
+              className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              회원가입
+              {loading ? '가입 중...' : '회원가입'}
             </button>
           </form>
 

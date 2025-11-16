@@ -1,19 +1,64 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Instagram, Youtube, Edit, LogOut, Bell, Settings } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const { user, profile, signOut, loading } = useAuth();
+  const [stats, setStats] = useState({
+    completedCampaigns: 0,
+    totalReviews: 0,
+  });
 
-  const userInfo = {
-    name: '김인플',
-    email: 'influencer@example.com',
-    instagram: '@myinstagram',
-    youtube: 'My YouTube Channel',
-    blog: 'https://myblog.com',
-    level: 'Gold',
-    completedCampaigns: 12,
-    totalReviews: 24,
+  useEffect(() => {
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
+
+  async function fetchStats() {
+    try {
+      // Fetch completed campaigns count
+      const { count: campaignsCount } = await supabase
+        .from('campaign_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id)
+        .eq('status', 'completed');
+
+      // Fetch reviews count
+      const { count: reviewsCount } = await supabase
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id);
+
+      setStats({
+        completedCampaigns: campaignsCount || 0,
+        totalReviews: reviewsCount || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -25,10 +70,10 @@ const ProfilePage = () => {
             <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl mb-4">
               <User size={56} className="text-gray-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">{userInfo.name}</h1>
-            <p className="text-white/90 mb-2">{userInfo.email}</p>
+            <h1 className="text-2xl font-bold text-white mb-1">{profile.name}</h1>
+            <p className="text-white/90 mb-2">{profile.email}</p>
             <div className="px-4 py-1.5 bg-yellow-400 text-yellow-900 rounded-full text-sm font-bold shadow-lg">
-              ⭐ {userInfo.level} 등급
+              ⭐ {profile.level || 'Bronze'} 등급
             </div>
           </div>
         </div>
@@ -38,11 +83,11 @@ const ProfilePage = () => {
       <div className="max-w-4xl mx-auto px-4 -mt-12">
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-            <p className="text-3xl font-bold text-gray-900 mb-1">{userInfo.completedCampaigns}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{stats.completedCampaigns}</p>
             <p className="text-gray-600 text-sm">완료한 체험단</p>
           </div>
           <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-            <p className="text-3xl font-bold text-gray-900 mb-1">{userInfo.totalReviews}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalReviews}</p>
             <p className="text-gray-600 text-sm">작성한 리뷰</p>
           </div>
         </div>
@@ -53,15 +98,15 @@ const ProfilePage = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-gray-700">
               <Instagram size={20} className="text-pink-500" />
-              <span>{userInfo.instagram || '등록된 계정 없음'}</span>
+              <span>{profile.instagram || '등록된 계정 없음'}</span>
             </div>
             <div className="flex items-center gap-3 text-gray-700">
               <Youtube size={20} className="text-red-500" />
-              <span>{userInfo.youtube || '등록된 채널 없음'}</span>
+              <span>{profile.youtube || '등록된 채널 없음'}</span>
             </div>
             <div className="flex items-center gap-3 text-gray-700">
               <Mail size={20} className="text-blue-500" />
-              <span>{userInfo.blog || '등록된 블로그 없음'}</span>
+              <span>{profile.blog || '등록된 블로그 없음'}</span>
             </div>
           </div>
         </div>
@@ -113,10 +158,7 @@ const ProfilePage = () => {
         {/* Logout Button */}
         <button
           className="w-full bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center gap-3 text-red-600 hover:bg-red-50 transition-colors font-semibold"
-          onClick={() => {
-            // TODO: Add logout logic
-            navigate('/login');
-          }}
+          onClick={handleLogout}
         >
           <LogOut size={20} />
           <span>로그아웃</span>
