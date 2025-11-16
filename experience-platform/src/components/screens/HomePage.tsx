@@ -44,37 +44,52 @@ const HomePage = () => {
 
   // 카카오 지도 SDK 동적 로드
   useEffect(() => {
-    const KAKAO_APP_KEY = import.meta.env.VITE_KAKAO_MAP_APP_KEY || 'YOUR_KAKAO_APP_KEY';
+    const KAKAO_APP_KEY = import.meta.env.VITE_KAKAO_MAP_APP_KEY || '233d6ee177d8f2809ac5c0af8f819b28';
+
+    console.log('🔑 카카오 API 키:', KAKAO_APP_KEY);
+    console.log('🌍 환경변수:', import.meta.env.VITE_KAKAO_MAP_APP_KEY);
 
     // 이미 로드되었는지 확인
     if (window.kakao && window.kakao.maps) {
-      setMapLoaded(true);
+      console.log('✅ 카카오 지도 SDK 이미 로드됨');
+      window.kakao.maps.load(() => {
+        setMapLoaded(true);
+      });
       return;
     }
 
     // 카카오 지도 SDK 스크립트 동적 로드
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
     script.async = true;
 
+    console.log('📡 SDK 로드 시작:', script.src);
+
     script.onload = () => {
+      console.log('✅ SDK 스크립트 로드 완료');
       // SDK 로드 완료 후 지도 API 로드
-      window.kakao.maps.load(() => {
-        setMapLoaded(true);
-      });
+      if (window.kakao && window.kakao.maps) {
+        window.kakao.maps.load(() => {
+          console.log('✅ 카카오 지도 API 로드 완료');
+          setMapLoaded(true);
+        });
+      } else {
+        console.error('❌ window.kakao.maps가 없습니다');
+      }
     };
 
-    script.onerror = () => {
-      console.error('카카오 지도 SDK 로드 실패');
+    script.onerror = (error) => {
+      console.error('❌ 카카오 지도 SDK 로드 실패:', error);
+      console.error('SDK URL:', script.src);
     };
 
     document.head.appendChild(script);
 
     return () => {
-      // 클린업: 스크립트 제거
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
+      // 클린업: 스크립트 제거하지 않음 (재로드 방지)
+      // if (script.parentNode) {
+      //   script.parentNode.removeChild(script);
+      // }
     };
   }, []);
 
