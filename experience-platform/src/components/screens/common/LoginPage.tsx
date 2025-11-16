@@ -29,9 +29,9 @@ const LoginPage = () => {
     // 프로필 타입에 따라 리다이렉트
     // Note: profile은 signIn 후 AuthContext에서 자동으로 로드됨
     setTimeout(() => {
-      if (profile?.user_type === 'admin') {
+      if (profile?.role === 'admin') {
         navigate('/admin');
-      } else if (profile?.user_type === 'owner') {
+      } else if (profile?.role === 'owner') {
         navigate('/owner');
       } else {
         navigate('/');

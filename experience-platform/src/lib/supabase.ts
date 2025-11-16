@@ -20,20 +20,17 @@ export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'completed
 
 export interface Profile {
   id: string;
-  email: string;
-  name: string;
-  user_type: UserType;
-  instagram?: string;
-  youtube?: string;
-  blog?: string;
-  level?: UserLevel;
+  role: 'influencer' | 'owner' | 'admin';
+  full_name: string;
+  phone?: string;
+  instagram_handle?: string;
+  youtube_channel?: string;
+  blog_url?: string;
+  follower_count?: number;
   business_name?: string;
   business_number?: string;
-  phone?: string;
-  avatar_url?: string;
-  status: UserStatus;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Store {

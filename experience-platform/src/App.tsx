@@ -67,7 +67,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="campaigns" element={<CampaignsListPage />} />
           <Route path="campaigns/:id" element={<CampaignDetailPage />} />
-          <Route path="qr/:campaignId" element={<QRCodePage />} />
+          <Route path="qr/:applicationId" element={<QRCodePage />} />
           <Route path="my-campaigns" element={<MyCampaignsPage />} />
           <Route path="my-campaigns/:id" element={<MyCampaignDetailPage />} />
           <Route path="profile" element={<ProfilePage />} />

@@ -72,38 +72,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name: userData.name,
-            user_type: userData.user_type,
-            instagram: userData.instagram,
-            youtube: userData.youtube,
-            blog: userData.blog,
-            business_name: userData.business_name,
-            business_number: userData.business_number,
-            phone: userData.phone,
-          },
-        },
       });
 
       if (error) return { error };
 
-      // 프로필이 자동으로 생성되지 않은 경우 수동 생성
+      // 프로필 생성
       if (data.user && !error) {
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
             {
               id: data.user.id,
-              email: data.user.email!,
-              name: userData.name!,
-              user_type: userData.user_type!,
-              instagram: userData.instagram,
-              youtube: userData.youtube,
-              blog: userData.blog,
+              role: userData.role!,
+              full_name: userData.full_name!,
+              phone: userData.phone,
+              instagram_handle: userData.instagram_handle,
+              youtube_channel: userData.youtube_channel,
+              blog_url: userData.blog_url,
               business_name: userData.business_name,
               business_number: userData.business_number,
-              phone: userData.phone,
             },
           ]);
 

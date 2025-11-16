@@ -36,8 +36,8 @@ const SignupOwnerPage = () => {
     setLoading(true);
 
     const { error } = await signUp(formData.email, formData.password, {
-      name: formData.name,
-      user_type: 'owner',
+      full_name: formData.name,
+      role: 'owner',
       business_name: formData.businessName,
       business_number: formData.businessNumber,
       phone: formData.phone,
