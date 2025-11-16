@@ -20,7 +20,9 @@ const HomePage = () => {
   const kakaoMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowsRef = useRef<any[]>([]);
+  const clustererRef = useRef<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [currentZoomLevel, setCurrentZoomLevel] = useState(5);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -80,37 +82,26 @@ const HomePage = () => {
     }
   }
 
-  // 카테고리별 색상 및 초성
-  const getCategoryStyle = (category?: string) => {
-    if (!category) return { color: '#EC4899', initial: 'E' };
+  // 카테고리별 귀여운 아이콘
+  const getCategoryIcon = (category?: string) => {
+    if (!category) return '🎪';
 
     const lowerCategory = category.toLowerCase();
-    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe'))
-      return { color: '#8B4513', initial: 'C' };
-    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat'))
-      return { color: '#DC2626', initial: 'M' };
-    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya'))
-      return { color: '#F59E0B', initial: 'I' };
-    if (lowerCategory.includes('술집') || lowerCategory.includes('bar'))
-      return { color: '#3B82F6', initial: 'B' };
-    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당'))
-      return { color: '#10B981', initial: 'R' };
-    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵'))
-      return { color: '#F97316', initial: 'P' };
-    if (lowerCategory.includes('디저트'))
-      return { color: '#EC4899', initial: 'D' };
-    if (lowerCategory.includes('한식'))
-      return { color: '#EF4444', initial: 'K' };
-    if (lowerCategory.includes('중식'))
-      return { color: '#F59E0B', initial: 'C' };
-    if (lowerCategory.includes('일식'))
-      return { color: '#14B8A6', initial: 'J' };
-    if (lowerCategory.includes('양식'))
-      return { color: '#8B5CF6', initial: 'W' };
-    return { color: '#EC4899', initial: 'E' };
+    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe')) return '☕';
+    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat')) return '🍖';
+    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya')) return '🍶';
+    if (lowerCategory.includes('술집') || lowerCategory.includes('bar')) return '🍺';
+    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당')) return '🍚';
+    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵')) return '🥐';
+    if (lowerCategory.includes('디저트')) return '🧁';
+    if (lowerCategory.includes('한식')) return '🍲';
+    if (lowerCategory.includes('중식')) return '🥟';
+    if (lowerCategory.includes('일식')) return '🍱';
+    if (lowerCategory.includes('양식')) return '🍝';
+    return '🎪';
   };
 
-  // 카카오 지도 SDK 동적 로드
+  // 카카오 지도 SDK 동적 로드 (클러스터링 라이브러리 포함)
   useEffect(() => {
     const KAKAO_APP_KEY = import.meta.env.VITE_KAKAO_MAP_APP_KEY || '233d6ee177d8f2809ac5c0af8f819b28';
 
@@ -122,7 +113,7 @@ const HomePage = () => {
     }
 
     const script = document.createElement('script');
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false&libraries=clusterer`;
     script.async = true;
 
     script.onload = () => {
@@ -163,6 +154,13 @@ const HomePage = () => {
     const map = new window.kakao.maps.Map(mapRef.current, mapOption);
     kakaoMapRef.current = map;
 
+    // 줌 레벨 변경 이벤트 리스너
+    window.kakao.maps.event.addListener(map, 'zoom_changed', () => {
+      const level = map.getLevel();
+      setCurrentZoomLevel(level);
+      console.log('🔍 Zoom level changed:', level);
+    });
+
     // Filter campaigns based on search and filters
     const filteredCampaigns = campaigns.filter((campaign) => {
       // Search filter
@@ -188,6 +186,8 @@ const HomePage = () => {
     });
 
     // Create markers for filtered campaigns
+    const markers: any[] = [];
+
     filteredCampaigns.forEach((campaign) => {
       if (!campaign.store?.latitude || !campaign.store?.longitude) return;
 
@@ -196,124 +196,112 @@ const HomePage = () => {
         campaign.store.longitude
       );
 
-      const categoryStyle = getCategoryStyle(campaign.store.category);
+      const categoryIcon = getCategoryIcon(campaign.store.category);
 
-      const customOverlay = new window.kakao.maps.CustomOverlay({
-        position: markerPosition,
-        content: `
-          <div style="
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, ${categoryStyle.color} 0%, ${categoryStyle.color}dd 100%);
-            border: 3px solid rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: 700;
-            color: white;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          "
-          onmouseover="this.style.transform='scale(1.15)'; this.style.boxShadow='0 8px 30px rgba(0, 0, 0, 0.35), 0 0 0 5px rgba(255, 255, 255, 0.5)'"
-          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(255, 255, 255, 0.3)'"
-          id="marker-${campaign.id}">
-            ${categoryStyle.initial}
-          </div>
-        `,
-        yAnchor: 0.5,
-      });
+      // 줌 레벨에 따라 다른 마커 사용
+      if (currentZoomLevel <= 7) {
+        // 줌 아웃 상태: 기본 마커 사용 (클러스터링 적용)
+        const marker = new window.kakao.maps.Marker({
+          position: markerPosition,
+          title: campaign.store.name,
+        });
 
-      customOverlay.setMap(map);
+        // 마커 클릭 이벤트
+        window.kakao.maps.event.addListener(marker, 'click', () => {
+          console.log('📍 Marker clicked, navigating to campaign:', campaign.id);
+          navigate(`/campaigns/${campaign.id}`);
+        });
 
-      const quota = `${campaign.current_participants || 0}/${campaign.total_quota}`;
-      const isFull = (campaign.current_participants || 0) >= campaign.total_quota;
-
-      const infoWindow = new window.kakao.maps.InfoWindow({
-        content: `
-          <div style="
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.2);
-            min-width: 240px;
-            border: 2px solid rgba(236, 72, 153, 0.3);
-          ">
-            <p style="
-              font-weight: 800;
-              color: #EC4899;
-              margin: 0 0 4px 0;
-              font-size: 17px;
-              text-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
-            ">${campaign.store.name}</p>
-            <p style="
-              color: #fff;
-              margin: 0 0 10px 0;
-              font-size: 13px;
-              font-weight: 500;
-            ">${campaign.name}</p>
-            <p style="
-              color: ${isFull ? '#FF6B6B' : '#fff'};
-              margin: 0 0 16px 0;
-              font-size: 14px;
-              font-weight: 600;
-            ">모집: ${quota}명 ${isFull ? '(마감)' : ''}</p>
-            <button
-              id="detail-btn-${campaign.id}"
-              style="
-              width: 100%;
+        markers.push(marker);
+        markersRef.current.push(marker);
+      } else {
+        // 줌 인 상태: 커스텀 오버레이 사용
+        const customOverlay = new window.kakao.maps.CustomOverlay({
+          position: markerPosition,
+          content: `
+            <div style="
+              width: 64px;
+              height: 64px;
               background: linear-gradient(135deg, #EC4899 0%, #F97316 100%);
-              color: white;
-              padding: 12px 20px;
-              border: none;
-              border-radius: 12px;
-              font-size: 14px;
+              border: 4px solid rgba(255, 255, 255, 0.95);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 32px;
+              box-shadow: 0 6px 24px rgba(236, 72, 153, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.4);
               cursor: pointer;
-              font-weight: 700;
-              box-shadow: 0 4px 20px rgba(236, 72, 153, 0.5), 0 0 30px rgba(236, 72, 153, 0.3);
-              transition: all 0.3s;
-            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(236, 72, 153, 0.7), 0 0 50px rgba(236, 72, 153, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px rgba(236, 72, 153, 0.5), 0 0 30px rgba(236, 72, 153, 0.3)'">
-              상세보기
-            </button>
-          </div>
-        `,
-        removable: true,
-      });
+              transition: all 0.35s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+              animation: pinBounce 2s ease-in-out infinite;
+            "
+            onmouseover="this.style.transform='scale(1.2) rotate(5deg)'; this.style.boxShadow='0 10px 35px rgba(236, 72, 153, 0.7), 0 0 0 4px rgba(255, 255, 255, 0.6)'"
+            onmouseout="this.style.transform='scale(1) rotate(0deg)'; this.style.boxShadow='0 6px 24px rgba(236, 72, 153, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.4)'"
+            id="marker-${campaign.id}">
+              ${categoryIcon}
+            </div>
+            <style>
+              @keyframes pinBounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-5px); }
+             }
+            </style>
+          `,
+          yAnchor: 0.5,
+        });
 
-      setTimeout(() => {
-        const markerElement = document.getElementById(`marker-${campaign.id}`);
-        if (markerElement) {
-          markerElement.addEventListener('click', () => {
-            infoWindowsRef.current.forEach((iw) => iw.close());
-            infoWindow.open(map, { lat: campaign.store!.latitude, lng: campaign.store!.longitude } as any);
+        customOverlay.setMap(map);
+        markersRef.current.push(customOverlay);
 
-            // InfoWindow가 열린 후 버튼에 이벤트 리스너 추가
-            setTimeout(() => {
-              const detailButton = document.getElementById(`detail-btn-${campaign.id}`);
-              if (detailButton) {
-                detailButton.addEventListener('click', () => {
-                  navigate(`/campaigns/${campaign.id}`);
-                });
-              }
-            }, 100);
-          });
-        }
-      }, 100);
-
-      markersRef.current.push(customOverlay);
-      infoWindowsRef.current.push(infoWindow);
+        setTimeout(() => {
+          const markerElement = document.getElementById(`marker-${campaign.id}`);
+          if (markerElement) {
+            markerElement.addEventListener('click', () => {
+              console.log('📍 Marker clicked, navigating to campaign:', campaign.id);
+              navigate(`/campaigns/${campaign.id}`);
+            });
+          }
+        }, 100);
+      }
     });
 
+    // MarkerClusterer 적용 (줌 아웃 상태일 때만)
+    if (currentZoomLevel <= 7 && markers.length > 0) {
+      if (clustererRef.current) {
+        clustererRef.current.clear();
+      }
+
+      const clusterer = new window.kakao.maps.MarkerClusterer({
+        map: map,
+        markers: markers,
+        gridSize: 60,
+        averageCenter: true,
+        minLevel: 1,
+        styles: [{
+          width: '60px',
+          height: '60px',
+          background: 'linear-gradient(135deg, #EC4899 0%, #F97316 100%)',
+          borderRadius: '50%',
+          color: '#fff',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          lineHeight: '60px',
+          fontSize: '16px',
+          border: '4px solid rgba(255, 255, 255, 0.95)',
+          boxShadow: '0 6px 24px rgba(236, 72, 153, 0.5)',
+        }],
+      });
+
+      clustererRef.current = clusterer;
+    }
+
     return () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current.forEach((marker) => marker.setMap ? marker.setMap(null) : null);
       markersRef.current = [];
-      infoWindowsRef.current = [];
+      if (clustererRef.current) {
+        clustererRef.current.clear();
+      }
     };
-  }, [mapLoaded, campaigns, loading, searchQuery, activeFilters]);
+  }, [mapLoaded, campaigns, loading, searchQuery, activeFilters, currentZoomLevel]);
 
   const handleRemoveFilter = (filter: string) => {
     setActiveFilters(activeFilters.filter((f) => f !== filter));

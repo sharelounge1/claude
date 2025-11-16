@@ -82,9 +82,17 @@ const CampaignDetailPage = () => {
   }
 
   const handleApply = async () => {
-    if (!user || !profile) {
+    console.log('🎯 handleApply called - user:', user?.email, 'profile:', profile?.name);
+
+    if (!user) {
       alert('로그인이 필요합니다.');
       navigate('/login');
+      return;
+    }
+
+    if (!profile) {
+      alert('프로필 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      console.error('❌ Profile not loaded:', { user: user.email, profile });
       return;
     }
 
@@ -103,6 +111,7 @@ const CampaignDetailPage = () => {
     setApplying(true);
 
     try {
+      console.log('📝 Applying to campaign:', campaign.id, 'user:', user.id);
       const { error } = await supabase
         .from('campaign_applications')
         .insert({
@@ -113,11 +122,12 @@ const CampaignDetailPage = () => {
 
       if (error) throw error;
 
+      console.log('✅ Application successful');
       alert('체험단 신청이 완료되었습니다! 승인을 기다려주세요.');
       setHasApplied(true);
       navigate('/my-campaigns');
     } catch (error: any) {
-      console.error('Error applying:', error);
+      console.error('❌ Error applying:', error);
       alert(error.message || '신청에 실패했습니다.');
     } finally {
       setApplying(false);

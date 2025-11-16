@@ -52,16 +52,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
+      console.log('🔍 Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Profile fetch error:', error);
+        throw error;
+      }
+
+      console.log('✅ Profile fetched successfully:', data);
       setProfile(data);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('❌ Error in fetchProfile:', error);
+      // 프로필을 찾을 수 없는 경우에도 loading을 false로 설정
+      setProfile(null);
     } finally {
       setLoading(false);
     }

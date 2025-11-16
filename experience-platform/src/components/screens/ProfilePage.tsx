@@ -52,13 +52,13 @@ const ProfilePage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-gray-500">로딩 중...</div>
+          <div className="text-gray-500">프로필 로딩 중...</div>
         </div>
       </div>
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center px-4">
@@ -68,6 +68,31 @@ const ProfilePage = () => {
             className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors"
           >
             로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center px-4">
+          <p className="text-gray-500 mb-4">프로필 정보를 찾을 수 없습니다.</p>
+          <p className="text-sm text-gray-400 mb-4">
+            계정: {user.email}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors mr-2"
+          >
+            새로고침
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-colors"
+          >
+            로그아웃
           </button>
         </div>
       </div>
