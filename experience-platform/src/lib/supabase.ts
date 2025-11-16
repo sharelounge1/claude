@@ -20,7 +20,7 @@ export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'completed
 
 export interface Profile {
   id: string;
-  role: 'influencer' | 'owner' | 'admin';
+  user_type: 'influencer' | 'owner' | 'admin';
   full_name: string;
   phone?: string;
   instagram_handle?: string;

@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .insert([
             {
               id: data.user.id,
-              role: userData.role!,
+              user_type: userData.user_type!,
               full_name: userData.full_name!,
               phone: userData.phone,
               instagram_handle: userData.instagram_handle,

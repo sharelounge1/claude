@@ -37,7 +37,7 @@ const SignupInfluencerPage = () => {
 
     const { error } = await signUp(formData.email, formData.password, {
       full_name: formData.name,
-      role: 'influencer',
+      user_type: 'influencer',
       instagram_handle: formData.instagram || undefined,
       youtube_channel: formData.youtube || undefined,
       blog_url: formData.blog || undefined,
