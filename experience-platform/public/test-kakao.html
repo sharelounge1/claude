@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카카오 지도 테스트</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 600px; border: 2px solid #333; margin-top: 20px; }
+        .status { padding: 15px; margin-bottom: 20px; border-radius: 8px; font-size: 14px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ 카카오 지도 API 테스트</h1>
+
+    <div id="status" class="status info">
+        <strong>상태:</strong> 지도 SDK 로딩 중...
+    </div>
+
+    <div id="map"></div>
+
+    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <h3>📋 디버그 정보</h3>
+        <p><strong>JavaScript 키:</strong> 233d6ee177d8f2809ac5c0af8f819b28</p>
+        <p><strong>SDK URL:</strong> https://dapi.kakao.com/v2/maps/sdk.js</p>
+        <p><strong>현재 URL:</strong> <span id="currentUrl"></span></p>
+        <p><strong>kakao 객체:</strong> <span id="kakaoStatus">확인 중...</span></p>
+    </div>
+
+    <!-- 카카오 지도 API - JavaScript 키 직접 삽입 -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=233d6ee177d8f2809ac5c0af8f819b28"></script>
+
+    <script>
+        // 현재 URL 표시
+        document.getElementById('currentUrl').textContent = window.location.href;
+
+        // 지도 초기화
+        function initMap() {
+            const statusDiv = document.getElementById('status');
+            const kakaoStatusSpan = document.getElementById('kakaoStatus');
+
+            try {
+                // kakao 객체 확인
+                if (typeof kakao === 'undefined') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>❌ 실패:</strong> kakao 객체를 찾을 수 없습니다.<br>
+                        <small>카카오 Maps SDK가 로드되지 않았습니다. 네트워크를 확인하세요.</small>
+                    `;
+                    kakaoStatusSpan.textContent = '❌ undefined';
+                    return;
+                }
+
+                kakaoStatusSpan.textContent = '✅ 로드됨';
+
+                if (typeof kakao.maps === 'undefined') {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <strong>❌ 실패:</strong> kakao.maps 객체를 찾을 수 없습니다.<br>
+                        <small>Maps API가 제대로 로드되지 않았습니다.</small>
+                    `;
+                    return;
+                }
+
+                // 지도 생성
+                kakao.maps.load(() => {
+                    const mapContainer = document.getElementById('map');
+                    const mapOption = {
+                        center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청
+                        level: 3
+                    };
+
+                    const map = new kakao.maps.Map(mapContainer, mapOption);
+
+                    // 마커 생성
+                    const markerPosition = new kakao.maps.LatLng(37.5665, 126.9780);
+                    const marker = new kakao.maps.Marker({
+                        position: markerPosition
+                    });
+                    marker.setMap(map);
+
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        <strong>✅ 성공!</strong> 카카오 지도 API가 정상적으로 작동합니다.<br>
+                        <small>지도가 표시되고 마커가 생성되었습니다.</small>
+                    `;
+                });
+
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `
+                    <strong>❌ 오류:</strong> ${error.message}<br>
+                    <small>콘솔(F12)을 열어 자세한 오류를 확인하세요.</small>
+                `;
+                console.error('지도 초기화 오류:', error);
+            }
+        }
+
+        // SDK 로드 완료 대기
+        if (window.kakao && window.kakao.maps) {
+            initMap();
+        } else {
+            window.addEventListener('load', () => {
+                setTimeout(initMap, 500);
+            });
+        }
+
+        // 콘솔 디버그 정보
+        console.log('=== 카카오 지도 API 디버그 ===');
+        console.log('현재 URL:', window.location.href);
+        console.log('kakao 객체:', window.kakao);
+
+        setTimeout(() => {
+            console.log('1초 후 kakao.maps:', window.kakao ? window.kakao.maps : 'undefined');
+        }, 1000);
+    </script>
+</body>
+</html>
