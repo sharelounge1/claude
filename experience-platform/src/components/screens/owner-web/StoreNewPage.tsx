@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone, Clock, Save } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const StoreNewPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -12,12 +15,35 @@ const StoreNewPage = () => {
     openTime: '',
     closeTime: '',
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Add save logic
-    alert('매장이 등록되었습니다!');
-    navigate('/owner/stores');
+    if (!user) return;
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.from('stores').insert({
+        owner_id: user.id,
+        name: formData.name,
+        address: formData.address,
+        phone: formData.phone,
+        category: formData.category,
+        open_time: formData.openTime || undefined,
+        close_time: formData.closeTime || undefined,
+        status: 'active',
+      });
+
+      if (error) throw error;
+
+      alert('매장이 등록되었습니다!');
+      navigate('/owner/stores');
+    } catch (error: any) {
+      alert(error.message || '매장 등록에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -134,10 +160,11 @@ const StoreNewPage = () => {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={24} />
-              등록하기
+              {loading ? '등록 중...' : '등록하기'}
             </button>
           </form>
         </div>
