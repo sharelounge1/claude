@@ -22,6 +22,7 @@ import MyCampaignDetailPage from './components/screens/influencer/MyCampaignDeta
 import ProfilePage from './components/screens/ProfilePage';
 import ProfileEditPage from './components/screens/influencer/ProfileEditPage';
 import NotificationsPage from './components/screens/influencer/NotificationsPage';
+import DebugPage from './components/screens/DebugPage';
 
 // Owner Web Screens
 import OwnerDashboardPage from './components/screens/owner-web/OwnerDashboardPage';
@@ -73,6 +74,7 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="profile/edit" element={<ProfileEditPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="debug" element={<DebugPage />} />
         </Route>
 
         {/* Owner Web Routes - OwnerWebLayout (Sidebar Navigation) */}

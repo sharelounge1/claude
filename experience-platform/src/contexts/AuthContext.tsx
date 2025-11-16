@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
-      console.log('🔍 Fetching profile for user:', userId);
+      console.log('🔍 프로필 조회 시작 - 사용자 ID:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -60,15 +60,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error('❌ Profile fetch error:', error);
+        console.error('❌ 프로필 조회 에러:', error);
+        console.error('❌ 에러 코드:', error.code);
+        console.error('❌ 에러 메시지:', error.message);
+
+        // PGRST116은 "row not found" 에러
+        if (error.code === 'PGRST116') {
+          console.log('⚠️ 프로필이 없습니다. 기본 프로필 생성을 시도합니다...');
+          await createDefaultProfile(userId);
+          return;
+        }
+
         throw error;
       }
 
-      console.log('✅ Profile fetched successfully:', data);
+      console.log('✅ 프로필 조회 성공:', data);
       setProfile(data);
-    } catch (error) {
-      console.error('❌ Error in fetchProfile:', error);
-      // 프로필을 찾을 수 없는 경우에도 loading을 false로 설정
+    } catch (error: any) {
+      console.error('❌ fetchProfile 에러:', error);
+      console.error('❌ 에러 상세:', JSON.stringify(error, null, 2));
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createDefaultProfile(userId: string) {
+    try {
+      console.log('🔨 기본 프로필 생성 시작 - 사용자 ID:', userId);
+
+      // 현재 사용자 정보 가져오기
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.error('❌ 사용자 정보를 가져올 수 없습니다');
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const defaultProfile = {
+        id: userId,
+        email: user.email!,
+        user_type: 'influencer' as const,
+        name: user.email?.split('@')[0] || '사용자',
+        phone: '',
+        instagram: null,
+        youtube: null,
+        blog: null,
+        business_name: null,
+        business_number: null,
+        status: 'active' as const,
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([defaultProfile])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ 기본 프로필 생성 실패:', error);
+        console.error('❌ 에러 코드:', error.code);
+        console.error('❌ 에러 메시지:', error.message);
+        setProfile(null);
+      } else {
+        console.log('✅ 기본 프로필 생성 성공:', data);
+        setProfile(data);
+      }
+    } catch (error: any) {
+      console.error('❌ createDefaultProfile 에러:', error);
       setProfile(null);
     } finally {
       setLoading(false);

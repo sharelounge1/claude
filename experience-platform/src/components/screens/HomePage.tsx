@@ -47,6 +47,7 @@ const HomePage = () => {
 
   async function fetchCampaigns() {
     try {
+      console.log('📥 캠페인 데이터 조회 시작...');
       const { data: campaignsData, error } = await supabase
         .from('campaigns')
         .select(`
@@ -56,7 +57,13 @@ const HomePage = () => {
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ 캠페인 조회 에러:', error);
+        throw error;
+      }
+
+      console.log('📊 조회된 캠페인 개수:', campaignsData?.length || 0);
+      console.log('📍 캠페인 데이터 샘플:', campaignsData?.slice(0, 3));
 
       // Fetch current participants count for each campaign
       const campaignsWithCount = await Promise.all(
@@ -74,10 +81,11 @@ const HomePage = () => {
         })
       );
 
+      console.log('✅ 캠페인 데이터 로딩 완료:', campaignsWithCount.length, '개');
       setCampaigns(campaignsWithCount);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
+      console.error('❌ 캠페인 조회 실패:', error);
       setLoading(false);
     }
   }
@@ -151,8 +159,14 @@ const HomePage = () => {
       tileAnimation: true,
     };
 
+    console.log('🗺️ 지도 초기화 중... 드래그 가능:', mapOption.draggable);
     const map = new window.kakao.maps.Map(mapRef.current, mapOption);
     kakaoMapRef.current = map;
+
+    // 지도 드래그 가능 여부 명시적으로 설정
+    map.setDraggable(true);
+    map.setZoomable(true);
+    console.log('✅ 지도 초기화 완료 - 드래그:', map.getDraggable(), '줌:', map.getZoomable());
 
     // 줌 레벨 변경 이벤트 리스너
     window.kakao.maps.event.addListener(map, 'zoom_changed', () => {
@@ -185,11 +199,22 @@ const HomePage = () => {
       return true;
     });
 
+    console.log('🔍 필터링된 캠페인:', filteredCampaigns.length, '개 (전체:', campaigns.length, '개)');
+
     // Create markers for filtered campaigns
     const markers: any[] = [];
 
-    filteredCampaigns.forEach((campaign) => {
-      if (!campaign.store?.latitude || !campaign.store?.longitude) return;
+    console.log('📍 마커 생성 시작 - 줌 레벨:', currentZoomLevel);
+
+    filteredCampaigns.forEach((campaign, index) => {
+      if (!campaign.store?.latitude || !campaign.store?.longitude) {
+        console.log(`⚠️ 캠페인 ${index + 1}: 위치 정보 없음 -`, campaign.store?.name || campaign.name);
+        return;
+      }
+
+      if (index < 3) {
+        console.log(`📌 캠페인 ${index + 1}:`, campaign.store.name, '위치:', campaign.store.latitude, campaign.store.longitude);
+      }
 
       const markerPosition = new window.kakao.maps.LatLng(
         campaign.store.latitude,
@@ -264,8 +289,12 @@ const HomePage = () => {
       }
     });
 
+    console.log('📊 생성된 마커 개수:', markers.length);
+
     // MarkerClusterer 적용 (줌 아웃 상태일 때만)
     if (currentZoomLevel <= 7 && markers.length > 0) {
+      console.log('🔗 클러스터러 적용 중...', markers.length, '개 마커');
+
       if (clustererRef.current) {
         clustererRef.current.clear();
       }
@@ -292,6 +321,9 @@ const HomePage = () => {
       });
 
       clustererRef.current = clusterer;
+      console.log('✅ 클러스터러 적용 완료');
+    } else if (currentZoomLevel > 7) {
+      console.log('✨ 커스텀 오버레이 모드 - 개별 핀 표시');
     }
 
     return () => {

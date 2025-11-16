@@ -19,7 +19,7 @@ interface CampaignWithStore extends Campaign {
 const CampaignDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [campaign, setCampaign] = useState<CampaignWithStore | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
@@ -82,7 +82,13 @@ const CampaignDetailPage = () => {
   }
 
   const handleApply = async () => {
-    console.log('🎯 handleApply called - user:', user?.email, 'profile:', profile?.name);
+    console.log('🎯 신청하기 클릭 - 사용자:', user?.email, '프로필:', profile?.name, '인증 로딩:', authLoading);
+
+    if (authLoading) {
+      alert('프로필 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+      console.log('⏳ 인증 정보 로딩 중...');
+      return;
+    }
 
     if (!user) {
       alert('로그인이 필요합니다.');
@@ -91,8 +97,13 @@ const CampaignDetailPage = () => {
     }
 
     if (!profile) {
-      alert('프로필 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
-      console.error('❌ Profile not loaded:', { user: user.email, profile });
+      alert('프로필 정보를 찾을 수 없습니다. 잠시 후 다시 시도하거나 고객센터에 문의해주세요.');
+      console.error('❌ 프로필 없음:', {
+        user: user.email,
+        userId: user.id,
+        profile,
+        authLoading
+      });
       return;
     }
 
