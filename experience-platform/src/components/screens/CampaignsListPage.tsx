@@ -1,64 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, MapPin, Store, Gift, Users, Clock } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import type { Campaign } from '../../lib/supabase';
 
-interface Campaign {
-  id: number;
-  storeName: string;
-  category: string;
-  region: string;
-  benefit: string;
-  currentQuota: number;
-  totalQuota: number;
-  deadline: string;
-  imageUrl: string;
-  sns: string[];
+interface CampaignWithStore extends Campaign {
+  store?: {
+    name: string;
+    address: string;
+    category: string;
+  };
+  current_participants?: number;
 }
 
 const CampaignsListPage = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'latest' | 'deadline' | 'popular'>('latest');
+  const [campaigns, setCampaigns] = useState<CampaignWithStore[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const campaigns: Campaign[] = [
-    {
-      id: 1,
-      storeName: '서울 카페 모카',
-      category: '카페',
-      region: '서울 강남구',
-      benefit: '2인 무료 식사',
-      currentQuota: 3,
-      totalQuota: 5,
-      deadline: '2025-12-31',
-      imageUrl: '',
-      sns: ['블로그', '인스타그램'],
-    },
-    {
-      id: 2,
-      storeName: '부산 고깃집',
-      category: '고깃집',
-      region: '부산 해운대구',
-      benefit: '50% 할인',
-      currentQuota: 5,
-      totalQuota: 5,
-      deadline: '2025-11-30',
-      imageUrl: '',
-      sns: ['블로그'],
-    },
-    {
-      id: 3,
-      storeName: '강남 이자카야',
-      category: '이자카야',
-      region: '서울 강남구',
-      benefit: '2인 무료 + 음료',
-      currentQuota: 1,
-      totalQuota: 3,
-      deadline: '2025-12-15',
-      imageUrl: '',
-      sns: ['인스타그램', '유튜브'],
-    },
-  ];
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  async function fetchCampaigns() {
+    try {
+      const { data: campaignsData, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          store:stores(name, address, category)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const campaignsWithCount = await Promise.all(
+        (campaignsData || []).map(async (campaign) => {
+          const { count } = await supabase
+            .from('campaign_applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('campaign_id', campaign.id)
+            .in('status', ['approved', 'completed']);
+
+          return {
+            ...campaign,
+            current_participants: count || 0,
+          };
+        })
+      );
+
+      setCampaigns(campaignsWithCount);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      setLoading(false);
+    }
+  }
 
   const handleToggleFilter = (filter: string) => {
     if (activeFilters.includes(filter)) {
@@ -67,6 +69,75 @@ const CampaignsListPage = () => {
       setActiveFilters([...activeFilters, filter]);
     }
   };
+
+  // Filter and search campaigns
+  const filteredCampaigns = campaigns.filter((campaign) => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesName = campaign.name.toLowerCase().includes(query);
+      const matchesStoreName = campaign.store?.name?.toLowerCase().includes(query) || false;
+      const matchesBenefit = campaign.benefit.toLowerCase().includes(query);
+
+      if (!matchesName && !matchesStoreName && !matchesBenefit) {
+        return false;
+      }
+    }
+
+    // Active filters
+    if (activeFilters.length > 0) {
+      // Check if any filter matches SNS
+      const snsFilters = activeFilters.filter(f => ['블로그', '인스타그램', '유튜브'].includes(f));
+      if (snsFilters.length > 0) {
+        const hasSnsMatch = snsFilters.some(sns => campaign.required_sns.includes(sns));
+        if (!hasSnsMatch) return false;
+      }
+
+      // Check if any filter matches category
+      const categoryFilters = activeFilters.filter(f =>
+        ['카페', '밥집', '고깃집', '술집', '이자카야', '분식', '베이커리', '디저트', '한식당', '중식당', '일식당', '양식당'].includes(f)
+      );
+      if (categoryFilters.length > 0) {
+        const categoryMap: Record<string, string> = {
+          'cafe': '카페',
+          'restaurant': '밥집',
+          'bar': '술집',
+          'bakery': '베이커리',
+          'izakaya': '이자카야',
+          'korean': '한식당',
+          'chinese': '중식당',
+          'japanese': '일식당',
+          'western': '양식당',
+        };
+        const campaignCategory = categoryMap[campaign.store?.category || ''] || campaign.store?.category || '';
+        if (!categoryFilters.includes(campaignCategory)) return false;
+      }
+
+      // Check if any filter matches region (from address)
+      const regionFilters = activeFilters.filter(f =>
+        ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산'].includes(f)
+      );
+      if (regionFilters.length > 0) {
+        const address = campaign.store?.address || '';
+        const hasRegionMatch = regionFilters.some(region => address.includes(region));
+        if (!hasRegionMatch) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Sort campaigns
+  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
+    if (sortBy === 'latest') {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    } else if (sortBy === 'deadline') {
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    } else if (sortBy === 'popular') {
+      return (b.current_participants || 0) - (a.current_participants || 0);
+    }
+    return 0;
+  });
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -145,82 +216,97 @@ const CampaignsListPage = () => {
       {/* Campaign List */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="space-y-4 max-w-lg mx-auto">
-          {campaigns.map((campaign) => (
-            <div
-              key={campaign.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              {/* Image */}
-              <div className="relative h-48 bg-gradient-to-br from-blue-100 to-purple-100">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Store size={64} className="text-white/50" />
-                </div>
-                {/* SNS Badges */}
-                <div className="absolute top-3 left-3 flex gap-2">
-                  {campaign.sns.map((sns) => (
-                    <span
-                      key={sns}
-                      className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700"
-                    >
-                      {sns}
-                    </span>
-                  ))}
-                </div>
-                {/* Quota Badge */}
-                <div className="absolute top-3 right-3 px-3 py-1.5 bg-primary text-white rounded-full text-sm font-semibold">
-                  {campaign.currentQuota}/{campaign.totalQuota}명
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  {campaign.storeName}
-                </h3>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin size={16} className="text-gray-400" />
-                    <span>{campaign.region}</span>
-                    <span className="text-gray-400">|</span>
-                    <Store size={16} className="text-gray-400" />
-                    <span>{campaign.category}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    <Gift size={16} className="text-accent" />
-                    <span className="font-semibold text-accent">
-                      혜택: {campaign.benefit}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users size={16} className="text-gray-400" />
-                    <span>
-                      모집: {campaign.currentQuota}/{campaign.totalQuota}명
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock size={16} className="text-gray-400" />
-                    <span>마감: {campaign.deadline}</span>
-                  </div>
-                </div>
-
-                {/* Apply Button */}
-                <button
-                  className={`w-full py-3 rounded-xl font-semibold transition-colors ${
-                    campaign.currentQuota >= campaign.totalQuota
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-primary text-white hover:bg-blue-600'
-                  }`}
-                  disabled={campaign.currentQuota >= campaign.totalQuota}
-                >
-                  {campaign.currentQuota >= campaign.totalQuota ? '마감됨' : '신청하기'}
-                </button>
-              </div>
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">로딩 중...</div>
+          ) : sortedCampaigns.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              {campaigns.length === 0 ? '진행 중인 캠페인이 없습니다' : '검색 결과가 없습니다'}
             </div>
-          ))}
+          ) : (
+            sortedCampaigns.map((campaign) => (
+              <div
+                key={campaign.id}
+                onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              >
+                {/* Image */}
+                <div className="relative h-48 bg-gradient-to-br from-blue-100 to-purple-100">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Store size={64} className="text-white/50" />
+                  </div>
+                  {/* SNS Badges */}
+                  <div className="absolute top-3 left-3 flex gap-2">
+                    {campaign.required_sns.map((sns) => (
+                      <span
+                        key={sns}
+                        className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700"
+                      >
+                        {sns}
+                      </span>
+                    ))}
+                  </div>
+                  {/* Quota Badge */}
+                  <div className="absolute top-3 right-3 px-3 py-1.5 bg-primary text-white rounded-full text-sm font-semibold">
+                    {campaign.current_participants}/{campaign.total_quota}명
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    {campaign.store?.name || campaign.name}
+                  </h3>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MapPin size={16} className="text-gray-400" />
+                      <span className="truncate">{campaign.store?.address || '주소 정보 없음'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Store size={16} className="text-gray-400" />
+                      <span>{campaign.store?.category || '미분류'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm">
+                      <Gift size={16} className="text-accent" />
+                      <span className="font-semibold text-accent">
+                        혜택: {campaign.benefit}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users size={16} className="text-gray-400" />
+                      <span>
+                        모집: {campaign.current_participants}/{campaign.total_quota}명
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Clock size={16} className="text-gray-400" />
+                      <span>마감: {new Date(campaign.deadline).toLocaleDateString('ko-KR')}</span>
+                    </div>
+                  </div>
+
+                  {/* Apply Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/campaigns/${campaign.id}`);
+                    }}
+                    className={`w-full py-3 rounded-xl font-semibold transition-colors ${
+                      (campaign.current_participants || 0) >= campaign.total_quota
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-blue-600'
+                    }`}
+                    disabled={(campaign.current_participants || 0) >= campaign.total_quota}
+                  >
+                    {(campaign.current_participants || 0) >= campaign.total_quota ? '마감됨' : '신청하기'}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

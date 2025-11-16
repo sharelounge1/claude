@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Campaign } from '../../lib/supabase';
@@ -14,6 +15,7 @@ interface CampaignWithStore extends Campaign {
 }
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const mapRef = useRef<HTMLDivElement>(null);
   const kakaoMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -25,6 +27,16 @@ const HomePage = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignWithStore[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Global navigation function that can be called from inline onclick handlers
+  useEffect(() => {
+    (window as any).navigateToCampaign = (campaignId: string) => {
+      navigate(`/campaigns/${campaignId}`);
+    };
+    return () => {
+      delete (window as any).navigateToCampaign;
+    };
+  }, [navigate]);
 
   // Fetch campaigns from Supabase
   useEffect(() => {
@@ -237,7 +249,7 @@ const HomePage = () => {
               font-weight: 600;
             ">모집: ${quota}명 ${isFull ? '(마감)' : ''}</p>
             <button
-              onclick="window.location.href='/campaigns/${campaign.id}'"
+              onclick="window.navigateToCampaign('${campaign.id}')"
               style="
               width: 100%;
               background: linear-gradient(135deg, #EC4899 0%, #F97316 100%);
@@ -340,7 +352,7 @@ const HomePage = () => {
       </div>
 
       {/* Map Container */}
-      <div ref={mapRef} className="w-full h-full">
+      <div ref={mapRef} className="w-full h-full relative z-0">
         {(!mapLoaded || loading) && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
