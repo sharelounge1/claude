@@ -36,11 +36,11 @@ const SignupInfluencerPage = () => {
     setLoading(true);
 
     const { error } = await signUp(formData.email, formData.password, {
-      full_name: formData.name,
+      name: formData.name,
       user_type: 'influencer',
-      instagram_handle: formData.instagram || undefined,
-      youtube_channel: formData.youtube || undefined,
-      blog_url: formData.blog || undefined,
+      instagram: formData.instagram || undefined,
+      youtube: formData.youtube || undefined,
+      blog: formData.blog || undefined,
     });
 
     if (error) {

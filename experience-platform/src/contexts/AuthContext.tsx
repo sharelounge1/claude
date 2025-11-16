@@ -83,14 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .insert([
             {
               id: data.user.id,
+              email: data.user.email!,
               user_type: userData.user_type!,
-              full_name: userData.full_name!,
+              name: userData.name!,
               phone: userData.phone,
-              instagram_handle: userData.instagram_handle,
-              youtube_channel: userData.youtube_channel,
-              blog_url: userData.blog_url,
+              instagram: userData.instagram,
+              youtube: userData.youtube,
+              blog: userData.blog,
               business_name: userData.business_name,
               business_number: userData.business_number,
+              status: 'active',
             },
           ]);
 

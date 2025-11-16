@@ -20,15 +20,18 @@ export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'completed
 
 export interface Profile {
   id: string;
+  email?: string;
+  name: string;
   user_type: 'influencer' | 'owner' | 'admin';
-  full_name: string;
-  phone?: string;
-  instagram_handle?: string;
-  youtube_channel?: string;
-  blog_url?: string;
-  follower_count?: number;
+  instagram?: string;
+  youtube?: string;
+  blog?: string;
+  level?: UserLevel;
   business_name?: string;
   business_number?: string;
+  phone?: string;
+  avatar_url?: string;
+  status?: UserStatus;
   created_at?: string;
   updated_at?: string;
 }

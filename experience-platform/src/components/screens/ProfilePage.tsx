@@ -70,10 +70,10 @@ const ProfilePage = () => {
             <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl mb-4">
               <User size={56} className="text-gray-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">{profile.full_name}</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">{profile.name}</h1>
             <p className="text-white/90 mb-2">{user?.email}</p>
             <div className="px-4 py-1.5 bg-yellow-400 text-yellow-900 rounded-full text-sm font-bold shadow-lg">
-              ⭐ 인플루언서
+              ⭐ {profile.level || 'Bronze'} 등급
             </div>
           </div>
         </div>
@@ -98,15 +98,15 @@ const ProfilePage = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-gray-700">
               <Instagram size={20} className="text-pink-500" />
-              <span>{profile.instagram_handle || '등록된 계정 없음'}</span>
+              <span>{profile.instagram || '등록된 계정 없음'}</span>
             </div>
             <div className="flex items-center gap-3 text-gray-700">
               <Youtube size={20} className="text-red-500" />
-              <span>{profile.youtube_channel || '등록된 채널 없음'}</span>
+              <span>{profile.youtube || '등록된 채널 없음'}</span>
             </div>
             <div className="flex items-center gap-3 text-gray-700">
               <Mail size={20} className="text-blue-500" />
-              <span>{profile.blog_url || '등록된 블로그 없음'}</span>
+              <span>{profile.blog || '등록된 블로그 없음'}</span>
             </div>
           </div>
         </div>
