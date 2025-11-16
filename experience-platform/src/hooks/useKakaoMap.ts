@@ -66,13 +66,23 @@ export const useKakaoMap = (markers: MarkerData[], markerColor = '#4A90E2') => {
   useEffect(() => {
     if (!mapRef.current || !mapLoaded || !window.kakao) return;
 
-    // 지도 생성
+    // 지도 생성 - 성능 최적화 옵션 추가
     const mapOption = {
       center: new window.kakao.maps.LatLng(37.5665, 126.9780),
       level: 3,
+      draggable: true, // 드래그 가능
+      scrollwheel: true, // 마우스 휠 줌 가능
+      disableDoubleClick: false, // 더블클릭 줌 허용
+      disableDoubleClickZoom: false,
+      keyboardShortcuts: true, // 키보드 단축키 사용
+      tileAnimation: true, // 타일 애니메이션 활성화 (부드러운 전환)
     };
 
     const map = new window.kakao.maps.Map(mapRef.current, mapOption);
+
+    // 지도 타입을 Skyview/Hybrid로 설정하면 더 부드러울 수 있음 (선택사항)
+    // map.setMapTypeId(window.kakao.maps.MapTypeId.ROADMAP);
+
     kakaoMapRef.current = map;
 
     // 마커 생성

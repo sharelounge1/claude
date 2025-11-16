@@ -100,7 +100,13 @@ const HomePageV1 = () => {
     // 지도 생성
     const mapOption = {
       center: new window.kakao.maps.LatLng(37.5665, 126.9780),
-      level: 3, // 확대 레벨 (1-14, 숫자가 작을수록 확대)
+      level: 3,
+      draggable: true,
+      scrollwheel: true,
+      disableDoubleClick: false,
+      disableDoubleClickZoom: false,
+      keyboardShortcuts: true,
+      tileAnimation: true, // 부드러운 타일 전환 애니메이션
     };
 
     const map = new window.kakao.maps.Map(mapRef.current, mapOption);
