@@ -1,24 +1,145 @@
-import { TrendingUp, Store, Megaphone, Users, Eye, MessageSquare, Star, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Store, Megaphone, Users, Eye, MessageSquare } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const OwnerDashboardPage = () => {
-  const stats = [
-    { icon: Store, label: '등록 매장', value: '3', color: 'blue', trend: '+1' },
-    { icon: Megaphone, label: '진행중 캠페인', value: '5', color: 'purple', trend: '+2' },
-    { icon: Users, label: '총 참여자', value: '127', color: 'green', trend: '+15' },
-    { icon: MessageSquare, label: '작성된 리뷰', value: '89', color: 'pink', trend: '+8' },
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    stores: 0,
+    activeCampaigns: 0,
+    totalParticipants: 0,
+    totalReviews: 0,
+  });
+  const [recentCampaigns, setRecentCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  async function fetchDashboardData() {
+    if (!user) return;
+
+    try {
+      // Fetch stores count
+      const { count: storesCount } = await supabase
+        .from('stores')
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', user.id)
+        .eq('status', 'active');
+
+      // Fetch active campaigns count
+      const { count: campaignsCount } = await supabase
+        .from('campaigns')
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', user.id)
+        .eq('status', 'active');
+
+      // Get all owner's campaign IDs for filtering
+      const { data: ownerCampaigns } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('owner_id', user.id);
+
+      const campaignIds = ownerCampaigns?.map(c => c.id) || [];
+
+      // Fetch total participants across all owner's campaigns
+      let participantsCount = 0;
+      if (campaignIds.length > 0) {
+        const { count } = await supabase
+          .from('campaign_applications')
+          .select('*', { count: 'exact', head: true })
+          .in('campaign_id', campaignIds);
+        participantsCount = count || 0;
+      }
+
+      // Fetch total reviews across all owner's campaigns
+      let reviewsCount = 0;
+      if (campaignIds.length > 0) {
+        const { count } = await supabase
+          .from('reviews')
+          .select('*', { count: 'exact', head: true })
+          .in('campaign_id', campaignIds);
+        reviewsCount = count || 0;
+      }
+
+      setStats({
+        stores: storesCount || 0,
+        activeCampaigns: campaignsCount || 0,
+        totalParticipants: participantsCount,
+        totalReviews: reviewsCount,
+      });
+
+      // Fetch recent campaigns with stats
+      const { data: campaignsData } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          store:stores(name)
+        `)
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (campaignsData) {
+        const campaignsWithStats = await Promise.all(
+          campaignsData.map(async (campaign) => {
+            const { count: applicantsCount } = await supabase
+              .from('campaign_applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('campaign_id', campaign.id);
+
+            const { count: approvedCount } = await supabase
+              .from('campaign_applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('campaign_id', campaign.id)
+              .eq('status', 'approved');
+
+            const { count: completedCount } = await supabase
+              .from('campaign_applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('campaign_id', campaign.id)
+              .eq('status', 'completed');
+
+            return {
+              id: campaign.id,
+              name: campaign.name,
+              store: campaign.store?.name || '매장명 없음',
+              applicants: applicantsCount || 0,
+              approved: approvedCount || 0,
+              completed: completedCount || 0,
+              status: campaign.status,
+            };
+          })
+        );
+
+        setRecentCampaigns(campaignsWithStats);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setLoading(false);
+    }
+  }
+
+  const statItems = [
+    { icon: Store, label: '등록 매장', value: stats.stores.toString(), color: 'blue' },
+    { icon: Megaphone, label: '진행중 캠페인', value: stats.activeCampaigns.toString(), color: 'purple' },
+    { icon: Users, label: '총 참여자', value: stats.totalParticipants.toString(), color: 'green' },
+    { icon: MessageSquare, label: '작성된 리뷰', value: stats.totalReviews.toString(), color: 'pink' },
   ];
 
-  const recentCampaigns = [
-    { id: 1, name: '카페 모카 체험단', store: '강남점', applicants: 12, approved: 8, completed: 3, status: 'active' },
-    { id: 2, name: '런치 세트 체험단', store: '역삼점', applicants: 20, approved: 15, completed: 12, status: 'active' },
-    { id: 3, name: '디저트 신메뉴', store: '강남점', applicants: 8, approved: 8, completed: 8, status: 'completed' },
-  ];
-
-  const recentReviews = [
-    { id: 1, user: '김인플', campaign: '카페 모카 체험단', rating: 5, date: '2시간 전' },
-    { id: 2, user: '이유튜버', campaign: '런치 세트 체험단', rating: 4, date: '5시간 전' },
-    { id: 3, user: '박블로거', campaign: '디저트 신메뉴', rating: 5, date: '1일 전' },
-  ];
+  if (loading) {
+    return (
+      <div className="p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -31,15 +152,21 @@ const OwnerDashboardPage = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => (
+          {statItems.map((stat) => (
             <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-xl flex items-center justify-center`}>
-                  <stat.icon size={24} className={`text-${stat.color}-600`} />
-                </div>
-                <div className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-                  <TrendingUp size={16} />
-                  <span>{stat.trend}</span>
+                <div className={`w-12 h-12 ${
+                  stat.color === 'blue' ? 'bg-blue-100' :
+                  stat.color === 'purple' ? 'bg-purple-100' :
+                  stat.color === 'green' ? 'bg-green-100' :
+                  'bg-pink-100'
+                } rounded-xl flex items-center justify-center`}>
+                  <stat.icon size={24} className={`${
+                    stat.color === 'blue' ? 'text-blue-600' :
+                    stat.color === 'purple' ? 'text-purple-600' :
+                    stat.color === 'green' ? 'text-green-600' :
+                    'text-pink-600'
+                  }`} />
                 </div>
               </div>
               <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
@@ -86,37 +213,6 @@ const OwnerDashboardPage = () => {
                       <MessageSquare size={16} />
                       <span>완료 {campaign.completed}</span>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Reviews */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">최근 리뷰</h2>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-semibold">
-                전체보기 →
-              </button>
-            </div>
-            <div className="space-y-4">
-              {recentReviews.map((review) => (
-                <div key={review.id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-bold text-gray-900">{review.user}</h3>
-                      <p className="text-sm text-gray-500">{review.campaign}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: review.rating }).map((_, i) => (
-                        <Star key={i} size={16} className="text-yellow-500 fill-yellow-500" />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar size={14} />
-                    <span>{review.date}</span>
                   </div>
                 </div>
               ))}
