@@ -1,50 +1,109 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import type { CampaignApplication } from '../../lib/supabase';
+
+interface StoreInfo {
+  name: string;
+  address?: string;
+  category?: string;
+}
+
+interface CampaignInfo {
+  name: string;
+  end_date: string;
+  store?: StoreInfo;
+}
+
+interface ApplicationWithCampaign extends CampaignApplication {
+  campaign?: CampaignInfo;
+}
 
 const MyCampaignsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'ongoing' | 'completed'>('ongoing');
+  const [ongoingCampaigns, setOngoingCampaigns] = useState<ApplicationWithCampaign[]>([]);
+  const [completedCampaigns, setCompletedCampaigns] = useState<ApplicationWithCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const ongoingCampaigns = [
-    {
-      id: 1,
-      name: '카페 모카',
-      category: '카페',
-      address: '서울시 강남구 테헤란로 123',
-      visitDate: '2025-01-20',
-      status: 'approved',
-      statusText: '승인 완료',
-    },
-    {
-      id: 2,
-      name: '서울 고깃집',
-      category: '고깃집',
-      address: '서울시 강남구 역삼동 456',
-      visitDate: '2025-01-22',
-      status: 'pending',
-      statusText: '승인 대기중',
-    },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchMyCampaigns();
+    }
+  }, [user]);
 
-  const completedCampaigns = [
-    {
-      id: 3,
-      name: '일본 이자카야',
-      category: '이자카야',
-      address: '서울시 강남구 논현동 789',
-      completedDate: '2025-01-10',
-      reviewStatus: 'completed',
-    },
-    {
-      id: 4,
-      name: '프렌치 레스토랑',
-      category: '양식',
-      address: '서울시 강남구 청담동 321',
-      completedDate: '2025-01-05',
-      reviewStatus: 'completed',
-    },
-  ];
+  async function fetchMyCampaigns() {
+    if (!user) return;
+
+    try {
+      // Fetch ongoing campaigns (pending, approved)
+      const { data: ongoing, error: ongoingError } = await supabase
+        .from('campaign_applications')
+        .select(`
+          *,
+          campaign:campaigns(
+            name,
+            end_date,
+            store:stores(name, address, category)
+          )
+        `)
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'approved'])
+        .order('created_at', { ascending: false });
+
+      if (ongoingError) throw ongoingError;
+
+      // Fetch completed campaigns
+      const { data: completed, error: completedError } = await supabase
+        .from('campaign_applications')
+        .select(`
+          *,
+          campaign:campaigns(
+            name,
+            end_date,
+            store:stores(name, address, category)
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .order('updated_at', { ascending: false });
+
+      if (completedError) throw completedError;
+
+      setOngoingCampaigns(ongoing || []);
+      setCompletedCampaigns(completed || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching my campaigns:', error);
+      setLoading(false);
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return '승인 대기중';
+      case 'approved':
+        return '승인 완료';
+      case 'completed':
+        return '완료';
+      case 'rejected':
+        return '거절됨';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,51 +153,60 @@ const MyCampaignsPage = () => {
         {activeTab === 'ongoing' && (
           <div className="space-y-4">
             {ongoingCampaigns.length > 0 ? (
-              ongoingCampaigns.map((campaign) => (
+              ongoingCampaigns.map((application) => (
                 <div
-                  key={campaign.id}
-                  onClick={() => navigate(`/my-campaigns/${campaign.id}`)}
+                  key={application.id}
+                  onClick={() => navigate(`/my-campaigns/${application.id}`)}
                   className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div>
+                    <div className="flex-1">
                       <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold mb-2">
-                        {campaign.category}
+                        {application.campaign?.store?.category || '일반'}
                       </span>
                       <h3 className="text-lg font-bold text-gray-900">
-                        {campaign.name}
+                        {application.campaign?.store?.name || '매장명 없음'}
                       </h3>
+                      <p className="text-sm text-gray-600 mt-1">{application.campaign?.name}</p>
                     </div>
                     <div>
-                      {campaign.status === 'approved' ? (
+                      {application.status === 'approved' ? (
                         <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                          ✓ {campaign.statusText}
+                          ✓ {getStatusText(application.status)}
+                        </span>
+                      ) : application.status === 'pending' ? (
+                        <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                          ⏳ {getStatusText(application.status)}
                         </span>
                       ) : (
-                        <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
-                          ⏳ {campaign.statusText}
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                          ✗ {getStatusText(application.status)}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span>{campaign.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} />
-                      <span>방문 예정일: {campaign.visitDate}</span>
-                    </div>
+                    {application.campaign?.store?.address && (
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} />
+                        <span>{application.campaign.store.address}</span>
+                      </div>
+                    )}
+                    {application.campaign?.end_date && (
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} />
+                        <span>마감일: {new Date(application.campaign.end_date).toLocaleDateString('ko-KR')}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {campaign.status === 'approved' && (
+                  {application.status === 'approved' && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/qr/${campaign.id}`);
+                          navigate(`/qr/${application.id}`);
                         }}
                         className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
                       >
@@ -173,20 +241,21 @@ const MyCampaignsPage = () => {
         {activeTab === 'completed' && (
           <div className="space-y-4">
             {completedCampaigns.length > 0 ? (
-              completedCampaigns.map((campaign) => (
+              completedCampaigns.map((application) => (
                 <div
-                  key={campaign.id}
-                  onClick={() => navigate(`/my-campaigns/${campaign.id}`)}
+                  key={application.id}
+                  onClick={() => navigate(`/my-campaigns/${application.id}`)}
                   className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div>
+                    <div className="flex-1">
                       <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold mb-2">
-                        {campaign.category}
+                        {application.campaign?.store?.category || '일반'}
                       </span>
                       <h3 className="text-lg font-bold text-gray-900">
-                        {campaign.name}
+                        {application.campaign?.store?.name || '매장명 없음'}
                       </h3>
+                      <p className="text-sm text-gray-600 mt-1">{application.campaign?.name}</p>
                     </div>
                     <div>
                       <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
@@ -197,14 +266,18 @@ const MyCampaignsPage = () => {
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span>{campaign.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} />
-                      <span>완료일: {campaign.completedDate}</span>
-                    </div>
+                    {application.campaign?.store?.address && (
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} />
+                        <span>{application.campaign.store.address}</span>
+                      </div>
+                    )}
+                    {application.updated_at && (
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} />
+                        <span>완료일: {new Date(application.updated_at).toLocaleDateString('ko-KR')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

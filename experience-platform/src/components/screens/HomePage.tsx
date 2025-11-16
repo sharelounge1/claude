@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import type { Campaign } from '../../lib/supabase';
 
-interface MarkerData {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  category: string;
-  quota: string;
+interface CampaignWithStore extends Campaign {
+  store?: {
+    name: string;
+    latitude?: number;
+    longitude?: number;
+    category?: string;
+  };
+  current_participants?: number;
 }
 
 const HomePage = () => {
@@ -20,26 +23,68 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [campaigns, setCampaigns] = useState<CampaignWithStore[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for map markers
-  const markers: MarkerData[] = [
-    { id: 1, name: '카페 모카', lat: 37.5665, lng: 126.9780, category: 'cafe', quota: '3/5' },
-    { id: 2, name: '서울 고깃집', lat: 37.5635, lng: 126.9785, category: 'meat', quota: '2/3' },
-    { id: 3, name: '일본 이자카야', lat: 37.5675, lng: 126.9795, category: 'izakaya', quota: '5/5' },
-  ];
+  // Fetch campaigns from Supabase
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  async function fetchCampaigns() {
+    try {
+      const { data: campaignsData, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          store:stores(name, latitude, longitude, category)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch current participants count for each campaign
+      const campaignsWithCount = await Promise.all(
+        (campaignsData || []).map(async (campaign) => {
+          const { count } = await supabase
+            .from('campaign_applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('campaign_id', campaign.id)
+            .in('status', ['approved', 'in_progress', 'completed']);
+
+          return {
+            ...campaign,
+            current_participants: count || 0,
+          };
+        })
+      );
+
+      setCampaigns(campaignsWithCount);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      setLoading(false);
+    }
+  }
 
   // 카테고리별 아이콘
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'cafe':
-        return '☕';
-      case 'meat':
-        return '🥩';
-      case 'izakaya':
-        return '🍶';
-      default:
-        return '📍';
-    }
+  const getCategoryIcon = (category?: string) => {
+    if (!category) return '📍';
+
+    const lowerCategory = category.toLowerCase();
+    if (lowerCategory.includes('카페') || lowerCategory.includes('cafe')) return '☕';
+    if (lowerCategory.includes('고깃') || lowerCategory.includes('meat')) return '🥩';
+    if (lowerCategory.includes('이자카야') || lowerCategory.includes('izakaya')) return '🍶';
+    if (lowerCategory.includes('술집') || lowerCategory.includes('bar')) return '🍺';
+    if (lowerCategory.includes('밥집') || lowerCategory.includes('식당')) return '🍚';
+    if (lowerCategory.includes('베이커리') || lowerCategory.includes('빵')) return '🥐';
+    if (lowerCategory.includes('디저트')) return '🍰';
+    if (lowerCategory.includes('한식')) return '🍲';
+    if (lowerCategory.includes('중식')) return '🥟';
+    if (lowerCategory.includes('일식')) return '🍱';
+    if (lowerCategory.includes('양식')) return '🍝';
+    return '📍';
   };
 
   // 카카오 지도 SDK 동적 로드
@@ -72,27 +117,61 @@ const HomePage = () => {
     document.head.appendChild(script);
   }, []);
 
-  // 카카오 지도 초기화
+  // 카카오 지도 초기화 및 마커 생성
   useEffect(() => {
-    if (!mapRef.current || !mapLoaded || !window.kakao) return;
+    if (!mapRef.current || !mapLoaded || !window.kakao || loading) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+    infoWindowsRef.current = [];
 
     const mapOption = {
       center: new window.kakao.maps.LatLng(37.5665, 126.9780),
-      level: 3,
+      level: 5,
       draggable: true,
       scrollwheel: true,
       disableDoubleClick: false,
       disableDoubleClickZoom: false,
       keyboardShortcuts: true,
-      tileAnimation: true, // 부드러운 타일 전환 애니메이션
+      tileAnimation: true,
     };
 
     const map = new window.kakao.maps.Map(mapRef.current, mapOption);
     kakaoMapRef.current = map;
 
-    // 마커 생성 - Glassmorphism Pink Theme
-    markers.forEach((markerData) => {
-      const markerPosition = new window.kakao.maps.LatLng(markerData.lat, markerData.lng);
+    // Filter campaigns based on search and filters
+    const filteredCampaigns = campaigns.filter((campaign) => {
+      // Search filter
+      if (searchQuery && campaign.store) {
+        const query = searchQuery.toLowerCase();
+        const storeName = campaign.store.name?.toLowerCase() || '';
+        const campaignName = campaign.name.toLowerCase();
+        if (!storeName.includes(query) && !campaignName.includes(query)) {
+          return false;
+        }
+      }
+
+      // Category filter
+      if (activeFilters.length > 0 && campaign.store) {
+        const category = campaign.store.category || '';
+        const hasMatchingCategory = activeFilters.some(filter =>
+          category.toLowerCase().includes(filter.toLowerCase())
+        );
+        if (!hasMatchingCategory) return false;
+      }
+
+      return true;
+    });
+
+    // Create markers for filtered campaigns
+    filteredCampaigns.forEach((campaign) => {
+      if (!campaign.store?.latitude || !campaign.store?.longitude) return;
+
+      const markerPosition = new window.kakao.maps.LatLng(
+        campaign.store.latitude,
+        campaign.store.longitude
+      );
 
       const customOverlay = new window.kakao.maps.CustomOverlay({
         position: markerPosition,
@@ -115,14 +194,17 @@ const HomePage = () => {
           "
           onmouseover="this.style.transform='scale(1.2) rotate(10deg)'; this.style.boxShadow='0 12px 40px rgba(236, 72, 153, 0.8), 0 0 60px rgba(236, 72, 153, 0.6)'"
           onmouseout="this.style.transform='scale(1) rotate(0deg)'; this.style.boxShadow='0 8px 32px rgba(236, 72, 153, 0.6), 0 0 40px rgba(236, 72, 153, 0.4)'"
-          id="marker-${markerData.id}">
-            ${getCategoryIcon(markerData.category)}
+          id="marker-${campaign.id}">
+            ${getCategoryIcon(campaign.store.category)}
           </div>
         `,
         yAnchor: 0.5,
       });
 
       customOverlay.setMap(map);
+
+      const quota = `${campaign.current_participants || 0}/${campaign.total_quota}`;
+      const isFull = (campaign.current_participants || 0) >= campaign.total_quota;
 
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `
@@ -138,17 +220,25 @@ const HomePage = () => {
             <p style="
               font-weight: 800;
               color: #EC4899;
-              margin: 0 0 10px 0;
+              margin: 0 0 4px 0;
               font-size: 17px;
               text-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
-            ">${markerData.name}</p>
+            ">${campaign.store.name}</p>
             <p style="
               color: #fff;
+              margin: 0 0 10px 0;
+              font-size: 13px;
+              font-weight: 500;
+            ">${campaign.name}</p>
+            <p style="
+              color: ${isFull ? '#FF6B6B' : '#fff'};
               margin: 0 0 16px 0;
               font-size: 14px;
               font-weight: 600;
-            ">모집: ${markerData.quota}명</p>
-            <button style="
+            ">모집: ${quota}명 ${isFull ? '(마감)' : ''}</p>
+            <button
+              onclick="window.location.href='/campaigns/${campaign.id}'"
+              style="
               width: 100%;
               background: linear-gradient(135deg, #EC4899 0%, #F97316 100%);
               color: white;
@@ -169,11 +259,11 @@ const HomePage = () => {
       });
 
       setTimeout(() => {
-        const markerElement = document.getElementById(`marker-${markerData.id}`);
+        const markerElement = document.getElementById(`marker-${campaign.id}`);
         if (markerElement) {
           markerElement.addEventListener('click', () => {
             infoWindowsRef.current.forEach((iw) => iw.close());
-            infoWindow.open(map, { lat: markerData.lat, lng: markerData.lng } as any);
+            infoWindow.open(map, { lat: campaign.store!.latitude, lng: campaign.store!.longitude } as any);
           });
         }
       }, 100);
@@ -187,7 +277,7 @@ const HomePage = () => {
       markersRef.current = [];
       infoWindowsRef.current = [];
     };
-  }, [mapLoaded]);
+  }, [mapLoaded, campaigns, loading, searchQuery, activeFilters]);
 
   const handleRemoveFilter = (filter: string) => {
     setActiveFilters(activeFilters.filter((f) => f !== filter));
@@ -251,11 +341,13 @@ const HomePage = () => {
 
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full">
-        {!mapLoaded && (
+        {(!mapLoaded || loading) && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white text-lg font-bold animate-pulse">지도를 불러오는 중...</p>
+              <p className="text-white text-lg font-bold animate-pulse">
+                {!mapLoaded ? '지도를 불러오는 중...' : '캠페인을 불러오는 중...'}
+              </p>
             </div>
           </div>
         )}
